@@ -1,0 +1,33 @@
+appId: com.zedit.antibrowser
+productName: Zed IT Anti Browser
+copyright: Copyright © 2026 ZED IT Bangladesh
+directories:
+  output: dist
+  buildResources: public/brand
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+extraResources:
+  - from: ../../resources/engines/manifest.json
+    to: engines/manifest.json
+  - from: ../../docs/third-party-notices.md
+    to: third-party-notices.md
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ZedIT-AntiBrowser-Setup-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Zed IT Anti Browser
+linux:
+  target:
+    - AppImage
+  category: Network

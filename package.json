@@ -1,0 +1,26 @@
+{
+  "name": "zed-it-anti-browser",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "node scripts/run-vitest.mjs",
+    "dev:desktop": "pnpm --filter @zita/desktop dev",
+    "build:desktop": "pnpm --filter @zita/desktop build",
+    "build:win": "tsx scripts/build-win-installer.ts",
+    "rebuild:native": "pnpm --filter @zita/desktop rebuild",
+    "engine:fetch": "tsx scripts/fetch-engine.ts",
+    "spike:verify": "tsx scripts/spike-verify.ts"
+  },
+  "devDependencies": {
+    "@electron/asar": "^4.3.2",
+    "@types/node": "^22.15.0",
+    "@zita/core": "workspace:*",
+    "@zita/shared": "workspace:*",
+    "resedit": "^3.1.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}

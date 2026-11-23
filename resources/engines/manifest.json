@@ -1,0 +1,19 @@
+{
+  "version": "150.0.7871.186",
+  "upstreamRepo": "https://github.com/adryfish/fingerprint-chromium",
+  "license": "BSD-3-Clause",
+  "artifacts": {
+    "linux-x64": {
+      "filename": "ungoogled-chromium-150.0.7871.186-1-x86_64_linux.tar.xz",
+      "url": "https://github.com/adryfish/fingerprint-chromium/releases/download/150.0.7871.186/ungoogled-chromium-150.0.7871.186-1-x86_64_linux.tar.xz",
+      "size": 145806232,
+      "sha256": "48eff860053efd9ad498d51370f0a1f59f983df39c02a72ad2a8682cdead4055"
+    },
+    "win-x64": {
+      "filename": "ungoogled-chromium_150.0.7871.186-1.1_windows_x64.zip",
+      "url": "https://github.com/adryfish/fingerprint-chromium/releases/download/150.0.7871.186/ungoogled-chromium_150.0.7871.186-1.1_windows_x64.zip",
+      "size": 193743241,
+      "sha256": "4d549c326e51ebbabf562fd365eb5380d9d4a81200da2c60f075c688d9a77e03"
+    }
+  }
+}

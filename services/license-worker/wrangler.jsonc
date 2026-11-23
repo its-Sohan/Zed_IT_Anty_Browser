@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zita-license-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-11-01",
+  "vars": {
+    "ISSUER": "license.zedit.app"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "zita-licenses",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

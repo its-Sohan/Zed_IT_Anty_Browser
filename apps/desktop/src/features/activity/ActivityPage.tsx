@@ -1,0 +1,116 @@
+import { useMemo, useState } from 'react';
+import { Activity, Search } from 'lucide-react';
+import type { ActivityLogItem } from '@zita/shared';
+import { Badge } from '@/components/ui/badge';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Frame, FramePanel } from '@/components/ui/frame';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+
+export interface ActivityPageProps {
+  items: ActivityLogItem[] | undefined;
+  isLoading: boolean;
+}
+
+export function ActivityPage({ items, isLoading }: ActivityPageProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const list = items ?? [];
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (i) =>
+        i.action.toLowerCase().includes(q) ||
+        (i.profileId ?? '').toLowerCase().includes(q) ||
+        (i.metaJson ?? '').toLowerCase().includes(q),
+    );
+  }, [items, search]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <h1 className="text-[15px] font-semibold">Activity</h1>
+          <Badge variant="secondary">{filtered.length}</Badge>
+        </div>
+        <div className="w-64">
+          <InputGroup>
+            <InputGroupAddon align="inline-start">
+              <Search className="size-4" strokeWidth={1.5} />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter actions or profile IDs..."
+              aria-label="Filter activity log"
+            />
+          </InputGroup>
+        </div>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-4">
+          {isLoading ? (
+            <Frame>
+              <FramePanel className="space-y-3 p-4">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-5 w-1/2" />
+              </FramePanel>
+            </Frame>
+          ) : filtered.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Activity strokeWidth={1.5} />
+                </EmptyMedia>
+                <EmptyTitle>No recorded activity</EmptyTitle>
+                <EmptyDescription>
+                  Profile creates, launches, stops, imports, and license changes appear here with credentials redacted.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Frame>
+              <FramePanel className="p-0">
+                <ul className="divide-y">
+                  {filtered.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <Badge variant="outline">{entry.action}</Badge>
+                        {entry.profileId && (
+                          <span className="font-mono-tabular text-xs text-muted-foreground">
+                            {entry.profileId}
+                          </span>
+                        )}
+                        {entry.metaJson && (
+                          <span className="font-mono-tabular truncate text-xs text-muted-foreground">
+                            {entry.metaJson}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono-tabular shrink-0 text-xs text-muted-foreground">
+                        {entry.createdAt}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </FramePanel>
+            </Frame>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
