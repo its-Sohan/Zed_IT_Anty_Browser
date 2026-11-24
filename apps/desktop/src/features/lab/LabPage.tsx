@@ -11,6 +11,14 @@ import {
   CardPanel,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Page,
+  PageActions,
+  PageBody,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -131,18 +139,20 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <FlaskConical className="size-4 text-primary" strokeWidth={1.5} />
-          <h1 className="text-[15px] font-semibold">Fingerprint Lab</h1>
+    <Page>
+      <PageHeader>
+        <PageHeading>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <FlaskConical className="size-4" strokeWidth={1.5} />
+          </span>
+          <PageTitle>Fingerprint Lab</PageTitle>
           <Badge variant={engine?.installed ? 'success' : 'warning'}>
             <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
             {engine?.installed ? `Engine ${engine.pinnedVersion} ready` : 'Engine missing'}
           </Badge>
-        </div>
+        </PageHeading>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <PageActions>
           <Select
             items={profileItems}
             value={selectedProfileId || TEMP_PROFILE_VALUE}
@@ -213,11 +223,11 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
             <Play className="size-3.5" strokeWidth={1.5} />
             {running ? 'Capturing...' : 'Run Lab Check'}
           </Button>
-        </div>
-      </div>
+        </PageActions>
+      </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+        <PageBody className="mx-auto max-w-5xl gap-4">
           {result ? (
             <Card>
               <CardHeader>
@@ -239,7 +249,7 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
                   </Button>
                 </CardAction>
               </CardHeader>
-              <CardPanel className="border-t p-0">
+              <CardPanel className="overflow-hidden border-t p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -298,8 +308,8 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
               </CardPanel>
             </Card>
           )}
-        </div>
+        </PageBody>
       </ScrollArea>
-    </div>
+    </Page>
   );
 }

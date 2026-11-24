@@ -34,6 +34,14 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { Input } from '@/components/ui/input';
+import {
+  Page,
+  PageActions,
+  PageBody,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -211,19 +219,21 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-[15px] font-semibold">Proxies</h1>
-          <Badge variant="secondary">{proxies.length}</Badge>
+    <Page>
+      <PageHeader>
+        <PageHeading>
+          <PageTitle>Proxies</PageTitle>
+          <Badge variant="secondary" className="type-numeric">
+            {proxies.length}
+          </Badge>
           {checkAllProgress && (
-            <Badge variant="info">
+            <Badge variant="info" className="type-numeric">
               Checking {checkAllProgress.done} / {checkAllProgress.total}
             </Badge>
           )}
-        </div>
+        </PageHeading>
 
-        <div className="flex items-center gap-2">
+        <PageActions>
           <Button
             size="sm"
             variant="outline"
@@ -241,11 +251,11 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
             <Plus className="size-3.5" strokeWidth={1.5} />
             Add proxy
           </Button>
-        </div>
-      </div>
+        </PageActions>
+      </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4">
+        <PageBody>
           {isLoading ? (
             <Frame>
               <FramePanel className="space-y-3 p-4">
@@ -277,7 +287,7 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
             </Empty>
           ) : (
             <Frame>
-              <FramePanel className="p-0">
+              <FramePanel className="overflow-hidden p-0">
                 <Table className="min-w-[780px]">
                   <TableHeader>
                     <TableRow>
@@ -399,7 +409,7 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
               </FramePanel>
             </Frame>
           )}
-        </div>
+        </PageBody>
       </ScrollArea>
 
       {/* Add/Edit Dialog */}
@@ -590,6 +600,6 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
           </DialogFooter>
         </DialogPopup>
       </Dialog>
-    </div>
+    </Page>
   );
 }

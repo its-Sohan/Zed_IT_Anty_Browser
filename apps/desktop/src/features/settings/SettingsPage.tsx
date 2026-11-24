@@ -32,6 +32,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  Page,
+  PageBody,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
@@ -138,16 +145,16 @@ export function SettingsPage({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-[15px] font-semibold">Settings</h1>
+    <Page>
+      <PageHeader>
+        <PageHeading>
+          <PageTitle>Settings</PageTitle>
           {isSaving && <Badge variant="info">Saving...</Badge>}
-        </div>
-      </div>
+        </PageHeading>
+      </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto max-w-4xl p-4">
+        <PageBody className="mx-auto max-w-4xl">
           <Tabs value={activeTab} onValueChange={(val) => onTabChange(val as SettingsTab)}>
             <TabsList className="mb-4">
               <TabsTab value="general">General</TabsTab>
@@ -577,8 +584,8 @@ export function SettingsPage({
               </Card>
             </TabsPanel>
           </Tabs>
-        </div>
+        </PageBody>
       </ScrollArea>
-    </div>
+    </Page>
   );
 }

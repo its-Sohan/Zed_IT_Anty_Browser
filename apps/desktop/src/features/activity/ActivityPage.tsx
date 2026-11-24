@@ -11,6 +11,14 @@ import {
 } from '@/components/ui/empty';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import {
+  Page,
+  PageActions,
+  PageBody,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -35,29 +43,33 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
   }, [items, search]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-[15px] font-semibold">Activity</h1>
-          <Badge variant="secondary">{filtered.length}</Badge>
-        </div>
-        <div className="w-64">
-          <InputGroup>
-            <InputGroupAddon align="inline-start">
-              <Search className="size-4" strokeWidth={1.5} />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter actions or profile IDs..."
-              aria-label="Filter activity log"
-            />
-          </InputGroup>
-        </div>
-      </div>
+    <Page>
+      <PageHeader>
+        <PageHeading>
+          <PageTitle>Activity</PageTitle>
+          <Badge variant="secondary" className="type-numeric">
+            {filtered.length}
+          </Badge>
+        </PageHeading>
+        <PageActions>
+          <div className="w-64">
+            <InputGroup>
+              <InputGroupAddon align="inline-start">
+                <Search className="size-4" strokeWidth={1.5} />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter actions or profile IDs..."
+                aria-label="Filter activity log"
+              />
+            </InputGroup>
+          </div>
+        </PageActions>
+      </PageHeader>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4">
+        <PageBody>
           {isLoading ? (
             <Frame>
               <FramePanel className="space-y-3 p-4">
@@ -80,12 +92,12 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
             </Empty>
           ) : (
             <Frame>
-              <FramePanel className="p-0">
+              <FramePanel className="overflow-hidden p-0">
                 <ul className="divide-y">
                   {filtered.map((entry) => (
                     <li
                       key={entry.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-muted/40"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Badge variant="outline">{entry.action}</Badge>
@@ -109,8 +121,8 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
               </FramePanel>
             </Frame>
           )}
-        </div>
+        </PageBody>
       </ScrollArea>
-    </div>
+    </Page>
   );
 }

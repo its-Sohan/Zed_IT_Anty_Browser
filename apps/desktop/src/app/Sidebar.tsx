@@ -5,6 +5,7 @@ import {
   Folder,
   Globe,
   Layers,
+  PanelLeftOpen,
   Play,
   Plus,
   Settings,
@@ -15,6 +16,7 @@ import type { ProfilesOverview } from '@zita/shared';
 import {
   Sidebar as CossSidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupAction,
   SidebarGroupContent,
@@ -68,7 +70,7 @@ export function AppSidebar({
 
   return (
     <CossSidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="h-12 flex-row items-center justify-between border-b px-2.5">
+      <SidebarHeader className="h-13 flex-row items-center justify-between gap-2 border-b border-sidebar-border px-2.5">
         {!collapsed ? (
           <div className="flex min-w-0 items-center gap-2">
             <img
@@ -81,20 +83,27 @@ export function AppSidebar({
               alt="ZED IT"
               className="zita-logo-light h-4 w-auto shrink-0 object-contain"
             />
-            <span aria-hidden="true" className="h-3.5 w-px bg-border" />
-            <span className="truncate text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              ANTI BROWSER
-            </span>
+            <span aria-hidden="true" className="h-3 w-px bg-sidebar-border" />
+            <span className="type-micro truncate text-sidebar-foreground/70">Anti Browser</span>
           </div>
         ) : (
           <span
             aria-label="Zed IT Anti Browser"
-            className="mx-auto flex size-6 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground"
+            className="mx-auto flex h-5 items-center justify-center"
           >
-            Z
+            <img
+              src="./brand/logo-dark.png"
+              alt=""
+              className="zita-logo-dark h-4 w-auto object-contain"
+            />
+            <img
+              src="./brand/logo-light.png"
+              alt=""
+              className="zita-logo-light h-4 w-auto object-contain"
+            />
           </span>
         )}
-        {!collapsed && <SidebarTrigger className="shrink-0" />}
+        {!collapsed && <SidebarTrigger className="shrink-0 text-sidebar-foreground/70" />}
       </SidebarHeader>
 
       <SidebarContent>
@@ -116,7 +125,7 @@ export function AppSidebar({
                   <Layers />
                   <span>All profiles</span>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="font-mono-tabular">{counts.all}</SidebarMenuBadge>
+                <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{counts.all}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -127,7 +136,7 @@ export function AppSidebar({
                   <Play />
                   <span>Running</span>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="font-mono-tabular">{counts.running}</SidebarMenuBadge>
+                <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{counts.running}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -138,7 +147,7 @@ export function AppSidebar({
                   <Trash2 />
                   <span>Trash</span>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="font-mono-tabular">{counts.trash}</SidebarMenuBadge>
+                <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{counts.trash}</SidebarMenuBadge>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -179,30 +188,6 @@ export function AppSidebar({
                   <span>Activity</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={section === 'settings'}
-                  tooltip="Settings"
-                  onClick={() => onSelectSection('settings')}
-                >
-                  <Settings />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {collapsed && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="Expand sidebar"
-                    onClick={() => {
-                      const trigger = document.querySelector<HTMLButtonElement>('[data-sidebar="rail"]');
-                      trigger?.click();
-                    }}
-                  >
-                    <SidebarTrigger className="size-4 p-0" />
-                    <span>Expand</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -211,7 +196,7 @@ export function AppSidebar({
           <>
             <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-              <SidebarGroupLabel>Statuses</SidebarGroupLabel>
+              <SidebarGroupLabel className="type-micro h-7 text-sidebar-foreground/55">Statuses</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {overview.statuses.map((st) => (
@@ -228,7 +213,7 @@ export function AppSidebar({
                         />
                         <span>{st.name}</span>
                       </SidebarMenuButton>
-                      <SidebarMenuBadge className="font-mono-tabular">{st.profileCount}</SidebarMenuBadge>
+                      <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{st.profileCount}</SidebarMenuBadge>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -237,7 +222,7 @@ export function AppSidebar({
 
             <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-              <SidebarGroupLabel>Folders</SidebarGroupLabel>
+              <SidebarGroupLabel className="type-micro h-7 text-sidebar-foreground/55">Folders</SidebarGroupLabel>
               <SidebarGroupAction
                 title="New folder"
                 aria-label="New folder"
@@ -277,7 +262,7 @@ export function AppSidebar({
                         <Folder />
                         <span>{folder.name}</span>
                       </SidebarMenuButton>
-                      <SidebarMenuBadge className="font-mono-tabular">{folder.profileCount}</SidebarMenuBadge>
+                      <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{folder.profileCount}</SidebarMenuBadge>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -286,7 +271,7 @@ export function AppSidebar({
 
             <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-              <SidebarGroupLabel>Tags</SidebarGroupLabel>
+              <SidebarGroupLabel className="type-micro h-7 text-sidebar-foreground/55">Tags</SidebarGroupLabel>
               <SidebarGroupAction
                 title="New tag"
                 aria-label="New tag"
@@ -326,7 +311,7 @@ export function AppSidebar({
                         <Tag />
                         <span>{tag.name}</span>
                       </SidebarMenuButton>
-                      <SidebarMenuBadge className="font-mono-tabular">{tag.profileCount}</SidebarMenuBadge>
+                      <SidebarMenuBadge className="type-numeric text-sidebar-foreground/55">{tag.profileCount}</SidebarMenuBadge>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -335,6 +320,35 @@ export function AppSidebar({
           </>
         )}
       </SidebarContent>
+
+      <SidebarFooter className="gap-1 border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={section === 'settings'}
+              tooltip="Settings"
+              onClick={() => onSelectSection('settings')}
+            >
+              <Settings />
+              <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {collapsed && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Expand sidebar"
+                onClick={() => {
+                  const trigger = document.querySelector<HTMLButtonElement>('[data-sidebar="rail"]');
+                  trigger?.click();
+                }}
+              >
+                <PanelLeftOpen />
+                <span>Expand</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </CossSidebar>
   );

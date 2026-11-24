@@ -52,6 +52,13 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Page,
+  PageActions,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -443,24 +450,24 @@ export function ProfileEditorPage({
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <Page>
       {/* Sticky Header (§8.3) */}
-      <div className="flex items-center justify-between gap-3 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="ghost" onClick={onBack}>
+      <PageHeader className="gap-3">
+        <PageHeading className="gap-2">
+          <Button size="xs" variant="ghost" onClick={onBack} className="-ml-1.5 text-muted-foreground">
             <ArrowLeft className="size-4" strokeWidth={1.5} />
             Profiles
           </Button>
           <Separator orientation="vertical" className="h-4" />
-          <h1 className="text-[15px] font-semibold">
+          <PageTitle className="max-w-90">
             {profileId ? name || 'Edit profile' : 'New profile'}
-          </h1>
+          </PageTitle>
           <Badge variant="secondary" className="font-mono-tabular">
             Seed {fp.seed}
           </Badge>
-        </div>
+        </PageHeading>
 
-        <div className="flex items-center gap-2">
+        <PageActions>
           <Button
             size="sm"
             variant="secondary"
@@ -479,8 +486,8 @@ export function ProfileEditorPage({
             <Play className="size-3.5" strokeWidth={1.5} />
             Save & Start
           </Button>
-        </div>
-      </div>
+        </PageActions>
+      </PageHeader>
 
       {loading ? (
         <div className="space-y-3 p-6">
@@ -492,7 +499,7 @@ export function ProfileEditorPage({
           {/* Left Section Nav */}
           <nav
             aria-label="Profile editor sections"
-            className="flex w-44 shrink-0 flex-col gap-1 border-r bg-card p-2.5"
+            className="flex w-44 shrink-0 flex-col gap-0.5 border-r border-border/70 bg-muted/30 p-2"
           >
             {(
               [
@@ -505,12 +512,13 @@ export function ProfileEditorPage({
               <Button
                 key={item.id}
                 size="sm"
-                variant={section === item.id ? 'secondary' : 'ghost'}
+                variant="ghost"
+                aria-current={section === item.id ? 'page' : undefined}
                 onClick={() => setSection(item.id)}
                 className={cn(
-                  'w-full justify-start',
+                  'w-full justify-start font-normal text-muted-foreground',
                   section === item.id &&
-                    'border-l-2 border-primary bg-primary/10 font-medium text-foreground',
+                    'bg-background font-medium text-foreground shadow-xs/5 hover:bg-background',
                 )}
               >
                 {item.label}
@@ -983,7 +991,7 @@ export function ProfileEditorPage({
                       {profileId ? (
                         <Button
                           size="sm"
-                          variant="destructive"
+                          variant="destructive-outline"
                           onClick={() => setConfirmClearCookies(true)}
                         >
                           <Trash2 className="size-3.5" strokeWidth={1.5} />
@@ -1053,10 +1061,8 @@ export function ProfileEditorPage({
           </ScrollArea>
 
           {/* Right Live Summary Rail (§8.3) */}
-          <aside className="w-72 shrink-0 space-y-3 border-l bg-card p-4">
-            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Identity Summary
-            </div>
+          <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border/70 bg-muted/30 p-4">
+            <div className="type-micro text-muted-foreground">Identity Summary</div>
             <Frame>
               <FramePanel className="space-y-2 p-3 text-xs">
                 <div className="flex justify-between">
@@ -1215,6 +1221,6 @@ export function ProfileEditorPage({
           </form>
         </DialogPopup>
       </Dialog>
-    </div>
+    </Page>
   );
 }

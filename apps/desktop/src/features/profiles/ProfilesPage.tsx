@@ -49,6 +49,14 @@ import { Frame, FramePanel } from '@/components/ui/frame';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
+import {
+  Page,
+  PageActions,
+  PageBody,
+  PageHeading,
+  PageHeader,
+  PageTitle,
+} from '@/components/ui/page';
 import { Popover, PopoverPopup, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -438,7 +446,7 @@ export function ProfilesPage({
               {p.running ? (
                 <Button
                   size="xs"
-                  variant="destructive"
+                  variant="destructive-outline"
                   disabled={busy}
                   onClick={() => void handleStop(p.id)}
                 >
@@ -448,7 +456,7 @@ export function ProfilesPage({
               ) : (
                 <Button
                   size="xs"
-                  variant="default"
+                  variant="secondary"
                   disabled={busy}
                   onClick={() => void handleLaunch(p.id)}
                 >
@@ -564,24 +572,25 @@ export function ProfilesPage({
   };
 
   return (
-    <div className="relative flex h-full flex-col">
+    <Page>
       <div role="status" className="visually-hidden">
         {sortStatusMsg}
       </div>
 
-      {/* Top Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-card px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-[15px] font-semibold">{viewTitle}</h1>
-          <Badge variant="secondary">{sortedProfiles.length}</Badge>
+      <PageHeader>
+        <PageHeading>
+          <PageTitle>{viewTitle}</PageTitle>
+          <Badge variant="secondary" className="type-numeric">
+            {sortedProfiles.length}
+          </Badge>
           {hasFilters && (
             <Button size="xs" variant="ghost" onClick={onClearFilters}>
               Clear filters
             </Button>
           )}
-        </div>
+        </PageHeading>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <PageActions>
           <div className="w-60">
             <InputGroup>
               <InputGroupAddon align="inline-start">
@@ -638,12 +647,12 @@ export function ProfilesPage({
             <Plus className="size-3.5" strokeWidth={1.5} />
             New profile
           </Button>
-        </div>
-      </div>
+        </PageActions>
+      </PageHeader>
 
       {/* Table / Empty State */}
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4 pb-20">
+        <PageBody className="pb-20">
           {isLoading ? (
             <Frame>
               <FramePanel className="space-y-3 p-4">
@@ -702,7 +711,7 @@ export function ProfilesPage({
             </Empty>
           ) : (
             <Frame>
-              <FramePanel className="p-0">
+              <FramePanel className="overflow-hidden p-0">
                 <Table className="min-w-[760px]">
                   <TableCaption className="sr-only">Browser Profiles</TableCaption>
                   <TableHeader>
@@ -735,7 +744,7 @@ export function ProfilesPage({
                                   variant="ghost"
                                   size="xs"
                                   onClick={() => toggleSort(sortMeta.col, sortMeta.label)}
-                                  className="h-9 w-full justify-start gap-1.5 rounded-none px-3 font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                                  className="h-10 w-full justify-start gap-1 rounded-none border-0 px-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
                                 >
                                   <span>{sortMeta.label}</span>
                                   {isSorted &&
@@ -773,13 +782,15 @@ export function ProfilesPage({
               </FramePanel>
             </Frame>
           )}
-        </div>
+        </PageBody>
       </ScrollArea>
 
       {/* Bulk Bar (§8.3) */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-12 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/5">
-          <Badge variant="default">{selectedIds.size} selected</Badge>
+        <div className="fixed bottom-11 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-border/80 bg-popover/95 px-2.5 py-1.5 shadow-lg backdrop-blur-xl">
+          <Badge variant="default" className="type-numeric mr-0.5">
+            {selectedIds.size} selected
+          </Badge>
           {view !== 'trash' ? (
             <>
               <Button
@@ -845,7 +856,7 @@ export function ProfilesPage({
               </Select>
               <Button
                 size="xs"
-                variant="destructive"
+                variant="destructive-outline"
                 onClick={() =>
                   void runBulk({ action: 'soft_delete', ids: Array.from(selectedIds) })
                 }
@@ -917,6 +928,6 @@ export function ProfilesPage({
           </AlertDialogFooter>
         </AlertDialogPopup>
       </AlertDialog>
-    </div>
+    </Page>
   );
 }

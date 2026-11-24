@@ -24,38 +24,57 @@ export function StatusBar({
   const runningProfiles = overview?.counts.running ?? 0;
   const maxProfiles = license?.maxProfiles ?? 5;
   const planLabel = license?.plan ? license.plan.toUpperCase() : 'UNACTIVATED';
+  const hasGrace =
+    license && (license.status === 'active' || license.status === 'trial')
+      ? `${license.offlineDaysRemaining}d grace`
+      : null;
+
+  const statusButton =
+    'gap-1.5 px-2 text-xs font-normal text-muted-foreground hover:text-foreground';
 
   return (
-    <footer className="flex h-8 shrink-0 items-center justify-between border-t bg-card px-2 text-xs text-muted-foreground select-none">
-      <div className="flex items-center gap-2">
+    <footer className="flex h-9 shrink-0 items-center justify-between gap-2 border-t border-border/80 bg-muted/40 px-2 text-xs text-muted-foreground select-none">
+      <div className="flex min-w-0 items-center gap-1">
         <Button
           variant="ghost"
           size="xs"
           onClick={onOpenEngineSettings}
-          className="gap-1.5 font-mono-tabular text-xs text-muted-foreground hover:text-foreground"
+          className={statusButton}
         >
           <span
             aria-hidden="true"
-            className="size-1.5 rounded-full"
-            style={{ backgroundColor: appInfo?.engineInstalled ? '#22C55E' : '#F59E0B' }}
+            className={`size-1.5 rounded-full ${appInfo?.engineInstalled ? 'bg-success' : 'bg-warning'}`}
           />
           {appInfo?.engineInstalled
             ? `Engine ${appInfo.engineVersion} ready`
             : `Engine ${appInfo?.engineVersion ?? '150.0.7871.186'} missing`}
         </Button>
 
-        <Separator orientation="vertical" className="h-3.5" />
+        <Separator orientation="vertical" className="h-3.5 opacity-60" />
 
         <Button
           variant="ghost"
           size="xs"
           onClick={onOpenLicenseSettings}
-          className="font-mono-tabular text-xs text-muted-foreground hover:text-foreground"
+          className={`${statusButton} type-numeric`}
         >
-          {planLabel} • {totalProfiles}/{maxProfiles} profiles • {runningProfiles} running
-          {license && (license.status === 'active' || license.status === 'trial')
-            ? ` • ${license.offlineDaysRemaining}d grace`
-            : ''}
+          <span className="font-medium text-foreground/80">{planLabel}</span>
+          <span aria-hidden="true" className="text-muted-foreground/40">
+            ·
+          </span>
+          {totalProfiles}/{maxProfiles} profiles
+          <span aria-hidden="true" className="text-muted-foreground/40">
+            ·
+          </span>
+          {runningProfiles} running
+          {hasGrace && (
+            <>
+              <span aria-hidden="true" className="text-muted-foreground/40">
+                ·
+              </span>
+              {hasGrace}
+            </>
+          )}
         </Button>
       </div>
 
@@ -63,7 +82,7 @@ export function StatusBar({
         variant="ghost"
         size="xs"
         onClick={onOpenCommandPalette}
-        className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        className={statusButton}
       >
         <span>Command palette</span>
         <KbdGroup>

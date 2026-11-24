@@ -381,7 +381,7 @@ export function LinkRunnerSheet({
           <div className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
             <div>
               <div className="text-xs font-medium text-foreground">Loop list continuously</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Restart from the first link after finishing the queue
               </div>
             </div>
@@ -421,13 +421,13 @@ export function LinkRunnerSheet({
                               {item.url}
                             </div>
                             {item.reason && (
-                              <div className="text-[11px] text-muted-foreground">{item.reason}</div>
+                              <div className="text-xs text-muted-foreground">{item.reason}</div>
                             )}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
                           {item.durationMs !== null && (
-                            <span className="font-mono-tabular text-[11px] text-muted-foreground">
+                            <span className="font-mono-tabular text-xs text-muted-foreground">
                               {(item.durationMs / 1000).toFixed(1)}s
                             </span>
                           )}
@@ -449,7 +449,7 @@ export function LinkRunnerSheet({
             Close
           </Button>
           {isRunning ? (
-            <Button variant="destructive" disabled={busy} onClick={() => void handleStop()}>
+            <Button variant="destructive-outline" disabled={busy} onClick={() => void handleStop()}>
               <Square className="size-3.5" strokeWidth={1.5} />
               Stop runner
             </Button>
