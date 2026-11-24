@@ -6,7 +6,7 @@ export interface DevToolsActivePortInfo {
   wsPath: string;
 }
 
-interface CdpTarget {
+export interface CdpTarget {
   id: string;
   type: string;
   url: string;
@@ -21,6 +21,17 @@ interface PendingRequest {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Lists active CDP targets on the given loopback port.
+ */
+export async function listCdpTargets(port: number): Promise<CdpTarget[]> {
+  const res = await fetch(`http://127.0.0.1:${port}/json/list`);
+  if (!res.ok) {
+    throw new Error(`Failed to list CDP targets on 127.0.0.1:${port} (HTTP ${res.status})`);
+  }
+  return (await res.json()) as CdpTarget[];
 }
 
 /**
@@ -63,6 +74,7 @@ export class CdpClient {
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
   private eventListeners = new Map<string, Set<(params: Record<string, unknown>) => void>>();
+  private closeListeners = new Set<() => void>();
 
   async connect(wsUrl: string, timeoutMs = 10_000): Promise<void> {
     await new Promise<void>((resolve, reject) => {
@@ -106,8 +118,48 @@ export class CdpClient {
           req.reject(new Error('CDP WebSocket closed before response'));
         }
         this.pending.clear();
+        for (const cb of this.closeListeners) {
+          cb();
+        }
       });
     });
+  }
+
+  onClose(listener: () => void): () => void {
+    this.closeListeners.add(listener);
+    return () => {
+      this.closeListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Connects to the browser-level CDP WebSocket endpoint (`/json/version`) on the given loopback port.
+   */
+  async connectToBrowser(port: number, timeoutMs = 10_000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    let lastError: unknown = null;
+
+    while (Date.now() < deadline) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+        if (res.ok) {
+          const info = (await res.json()) as { webSocketDebuggerUrl?: string };
+          if (info.webSocketDebuggerUrl) {
+            await this.connect(info.webSocketDebuggerUrl, timeoutMs);
+            return;
+          }
+        }
+      } catch (err) {
+        lastError = err;
+      }
+      await sleep(75);
+    }
+
+    throw new Error(
+      `Failed to connect to browser CDP endpoint on 127.0.0.1:${port}: ${
+        lastError instanceof Error ? lastError.message : 'browser target not ready'
+      }`,
+    );
   }
 
   /**
@@ -119,14 +171,11 @@ export class CdpClient {
 
     while (Date.now() < deadline) {
       try {
-        const res = await fetch(`http://127.0.0.1:${port}/json/list`);
-        if (res.ok) {
-          const targets = (await res.json()) as CdpTarget[];
-          const pageTarget = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
-          if (pageTarget?.webSocketDebuggerUrl) {
-            await this.connect(pageTarget.webSocketDebuggerUrl, timeoutMs);
-            return pageTarget;
-          }
+        const targets = await listCdpTargets(port);
+        const pageTarget = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+        if (pageTarget?.webSocketDebuggerUrl) {
+          await this.connect(pageTarget.webSocketDebuggerUrl, timeoutMs);
+          return pageTarget;
         }
       } catch (err) {
         lastError = err;
@@ -301,5 +350,6 @@ export class CdpClient {
       this.ws = null;
     }
     this.eventListeners.clear();
+    this.closeListeners.clear();
   }
 }

@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   FlaskConical,
   FolderPlus,
+  Link2,
   Pencil,
   Play,
   Plus,
@@ -71,6 +72,7 @@ import { toastManager } from '@/components/ui/toast';
 import { IpcClientError, zitaIpc } from '@/lib/ipc';
 import { cn } from '@/lib/utils';
 import { CsvImportDialog } from './CsvImportDialog';
+import { LinkRunnerSheet } from './LinkRunnerSheet';
 
 export interface ProfilesPageProps {
   overview: ProfilesOverview | undefined;
@@ -121,6 +123,8 @@ export function ProfilesPage({
   const [sortDir, setSortDir] = useState<'ascending' | 'descending'>('ascending');
   const [sortStatusMsg, setSortStatusMsg] = useState('');
   const [csvOpen, setCsvOpen] = useState(false);
+  const [linkRunnerProfileId, setLinkRunnerProfileId] = useState<string | null>(null);
+  const [activeLinkRunIds, setActiveLinkRunIds] = useState<Set<string>>(new Set());
   const [proxyFailPrompt, setProxyFailPrompt] = useState<{
     profileId: string;
     message: string;
@@ -133,6 +137,18 @@ export function ProfilesPage({
       return {};
     }
   });
+
+  useEffect(() => {
+    const unsub = window.zita.events.onLinkRunnerUpdated((state) => {
+      setActiveLinkRunIds((prev) => {
+        const next = new Set(prev);
+        if (state.status === 'running') next.add(state.profileId);
+        else next.delete(state.profileId);
+        return next;
+      });
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     try {
@@ -442,6 +458,16 @@ export function ProfilesPage({
               )}
               <Button
                 size="icon-sm"
+                variant={activeLinkRunIds.has(p.id) ? 'secondary' : 'ghost'}
+                title="Link Runner (auto-open & close tabs)"
+                aria-label="Open Link Runner"
+                className={activeLinkRunIds.has(p.id) ? 'text-primary' : undefined}
+                onClick={() => setLinkRunnerProfileId(p.id)}
+              >
+                <Link2 className="size-3.5" strokeWidth={1.5} />
+              </Button>
+              <Button
+                size="icon-sm"
                 variant="ghost"
                 title="Edit profile"
                 aria-label="Edit profile"
@@ -493,7 +519,7 @@ export function ProfilesPage({
         },
       }),
     ],
-    [sortedProfiles, selectedIds, busyIds, view, proxyById, statusById, folderById],
+    [sortedProfiles, selectedIds, busyIds, activeLinkRunIds, view, proxyById, statusById, folderById],
   );
 
   const table = useReactTable({
@@ -843,6 +869,13 @@ export function ProfilesPage({
       )}
 
       <CsvImportDialog open={csvOpen} onOpenChange={setCsvOpen} onImported={onRefresh} />
+
+      <LinkRunnerSheet
+        profile={rawProfiles.find((p) => p.id === linkRunnerProfileId) ?? null}
+        open={Boolean(linkRunnerProfileId)}
+        onOpenChange={(o) => !o && setLinkRunnerProfileId(null)}
+        onLaunchProfile={(id) => handleLaunch(id)}
+      />
 
       <AlertDialog
         open={Boolean(proxyFailPrompt)}

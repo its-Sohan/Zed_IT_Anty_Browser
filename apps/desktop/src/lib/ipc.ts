@@ -94,4 +94,9 @@ export const zitaIpc = {
   listActivity: (limit?: number) => unwrapIpc(window.zita.activity.list(limit)),
   getEngineStatus: () => unwrapIpc(window.zita.engine.status()),
   openExternal: (url: string) => unwrapIpc(window.zita.window.openExternal(url)),
+
+  startLinkRun: (input: Parameters<ZitaApi['linkRunner']['start']>[0]) =>
+    unwrapIpc(window.zita.linkRunner.start(input)),
+  stopLinkRun: (profileId: string) => unwrapIpc(window.zita.linkRunner.stop(profileId)),
+  getLinkRunStatus: (profileId: string) => unwrapIpc(window.zita.linkRunner.status(profileId)),
 };

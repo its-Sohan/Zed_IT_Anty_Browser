@@ -1,6 +1,7 @@
 export * from './engine/flags.js';
 export * from './engine/cdp.js';
 export * from './engine/launcher.js';
+export * from './engine/link-runner.js';
 export * from './proxy/bridge.js';
 export * from './proxy/parser.js';
 export * from './proxy/checker.js';

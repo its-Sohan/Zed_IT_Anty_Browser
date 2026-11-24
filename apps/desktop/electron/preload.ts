@@ -72,12 +72,24 @@ const api: ZitaApi = {
   window: {
     openExternal: (url) => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_OPEN_EXTERNAL, url),
   },
+  linkRunner: {
+    start: (input) => ipcRenderer.invoke(IPC_CHANNELS.LINK_RUNNER_START, input),
+    stop: (profileId) => ipcRenderer.invoke(IPC_CHANNELS.LINK_RUNNER_STOP, profileId),
+    status: (profileId) => ipcRenderer.invoke(IPC_CHANNELS.LINK_RUNNER_STATUS, profileId),
+  },
   events: {
     onProfileStatusChanged: (cb) => {
       const listener = (_event: unknown, payload: ProfileStatusEvent) => cb(payload);
       ipcRenderer.on(IPC_CHANNELS.EVENT_PROFILE_STATUS_CHANGED, listener);
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.EVENT_PROFILE_STATUS_CHANGED, listener);
+      };
+    },
+    onLinkRunnerUpdated: (cb) => {
+      const listener = (_event: unknown, payload: Parameters<typeof cb>[0]) => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.EVENT_LINK_RUNNER_UPDATED, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.EVENT_LINK_RUNNER_UPDATED, listener);
       };
     },
   },

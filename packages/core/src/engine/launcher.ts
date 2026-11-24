@@ -115,6 +115,10 @@ export class ProfileLauncher {
     return this.running.has(profileId);
   }
 
+  getCdpPort(profileId: string): number | null {
+    return this.running.get(profileId)?.cdpPort ?? null;
+  }
+
   private emit(profileId: string, state: ProfileLifecycleState, error?: string): void {
     this.deps.onStatusChange?.({ profileId, state, error });
   }

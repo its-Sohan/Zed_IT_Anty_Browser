@@ -11,6 +11,7 @@ import {
   redactSecrets,
   settings,
   type LicenseService,
+  type LinkRunnerService,
   type ProfileLauncher,
   type ProfilesService,
   type ProxyService,
@@ -31,6 +32,7 @@ import {
   PlatformSchema,
   ProfileListFilterSchema,
   ProxyProtocolSchema,
+  StartLinkRunInputSchema,
   UpdateProfileInputSchema,
   UpdateProxyInputSchema,
   UpdateSettingsInputSchema,
@@ -49,6 +51,7 @@ export interface IpcContext {
   proxyService: ProxyService;
   profilesService: ProfilesService;
   launcher: ProfileLauncher;
+  linkRunner: LinkRunnerService;
   licenseService: LicenseService;
 }
 
@@ -792,6 +795,43 @@ export function registerIpcHandlers(ctx: IpcContext): void {
       return ok({ opened: true });
     } catch (err) {
       return fail('OPEN_EXTERNAL_ERROR', errMsg(err, 'Failed to open URL'));
+    }
+  });
+
+  // --- Link Runner ---
+
+  ipcMain.handle(IPC_CHANNELS.LINK_RUNNER_START, async (_e, rawInput: unknown) => {
+    const parsed = StartLinkRunInputSchema.safeParse(rawInput ?? {});
+    if (!parsed.success) {
+      return fail('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid link runner input');
+    }
+    try {
+      const state = await ctx.linkRunner.start(parsed.data);
+      return ok(state);
+    } catch (err) {
+      return fail('LINK_RUNNER_START_ERROR', errMsg(err, 'Failed to start link runner'));
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LINK_RUNNER_STOP, async (_e, rawProfileId: unknown) => {
+    if (typeof rawProfileId !== 'string' || !rawProfileId) {
+      return fail('VALIDATION_ERROR', 'Profile ID is required');
+    }
+    try {
+      return ok(await ctx.linkRunner.stop(rawProfileId));
+    } catch (err) {
+      return fail('LINK_RUNNER_STOP_ERROR', errMsg(err, 'Failed to stop link runner'));
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LINK_RUNNER_STATUS, (_e, rawProfileId: unknown) => {
+    if (typeof rawProfileId !== 'string' || !rawProfileId) {
+      return fail('VALIDATION_ERROR', 'Profile ID is required');
+    }
+    try {
+      return ok(ctx.linkRunner.getStatus(rawProfileId));
+    } catch (err) {
+      return fail('LINK_RUNNER_STATUS_ERROR', errMsg(err, 'Failed to read link runner status'));
     }
   });
 }

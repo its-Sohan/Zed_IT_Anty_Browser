@@ -7,6 +7,7 @@ import { app, BrowserWindow, safeStorage } from 'electron';
 import {
   deriveFallbackKey,
   LicenseService,
+  LinkRunnerService,
   openDatabase,
   ProfileLauncher,
   ProfilesService,
@@ -53,6 +54,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEz2nF1p9F2a3Q8rP0bF7n0mJ9lR5K
 let mainWindow: BrowserWindow | null = null;
 let database: ZitaDatabase | null = null;
 let launcher: ProfileLauncher | null = null;
+let linkRunner: LinkRunnerService | null = null;
 let smokeTempDir: string | null = null;
 
 function resolveRepoRoot(): string {
@@ -271,8 +273,20 @@ app.whenReady().then(() => {
     resolveExecutable: () => resolveEngineStatus({ storageRoot, repoRoot }).executablePath,
     canLaunch: () => licenseService.assertCanLaunch(),
     onStatusChange: (event) => {
+      if (event.state === 'stopping' || event.state === 'stopped' || event.state === 'error') {
+        void linkRunner?.stop(event.profileId);
+      }
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send(IPC_CHANNELS.EVENT_PROFILE_STATUS_CHANGED, event);
+      }
+    },
+  });
+
+  linkRunner = new LinkRunnerService({
+    getCdpPort: (profileId) => launcher?.getCdpPort(profileId) ?? null,
+    onStateChange: (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(IPC_CHANNELS.EVENT_LINK_RUNNER_UPDATED, state);
       }
     },
   });
@@ -287,6 +301,7 @@ app.whenReady().then(() => {
     proxyService,
     profilesService,
     launcher,
+    linkRunner,
     licenseService,
   });
 
@@ -306,6 +321,7 @@ app.whenReady().then(() => {
   if (isSmokeTest) {
     runSmokeProbe(mainWindow).catch(async (err) => {
       console.error('Smoke test failed:', err);
+      await linkRunner?.stopAll();
       await launcher?.stopAll();
       database?.close();
       if (smokeTempDir) rmSync(smokeTempDir, { recursive: true, force: true });
@@ -315,6 +331,7 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => {
+  void linkRunner?.stopAll();
   void launcher?.stopAll();
 });
 

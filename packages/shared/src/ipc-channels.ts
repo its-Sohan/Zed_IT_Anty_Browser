@@ -54,5 +54,10 @@ export const IPC_CHANNELS = {
   ENGINE_STATUS: 'engine:status',
   WINDOW_OPEN_EXTERNAL: 'window:open-external',
 
+  LINK_RUNNER_START: 'link-runner:start',
+  LINK_RUNNER_STOP: 'link-runner:stop',
+  LINK_RUNNER_STATUS: 'link-runner:status',
+
   EVENT_PROFILE_STATUS_CHANGED: 'profiles:status-changed',
+  EVENT_LINK_RUNNER_UPDATED: 'link-runner:updated',
 } as const;
