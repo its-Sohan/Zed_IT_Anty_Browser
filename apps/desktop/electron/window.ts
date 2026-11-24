@@ -48,6 +48,8 @@ function resolveWindowIcon(): string | undefined {
           path.join(__dirname, '../renderer/brand/logo-dark.png'),
         ]
       : [
+          path.join(process.resourcesPath ?? '', 'icon.png'),
+          path.join(__dirname, '../renderer/brand/icon.png'),
           path.join(__dirname, '../renderer/brand/logo-dark.png'),
           path.join(process.resourcesPath ?? '', 'icon.ico'),
         ];
