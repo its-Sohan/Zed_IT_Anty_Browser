@@ -45,7 +45,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('[main] Unhandled rejection:', reason);
 });
 
-// Production public key for verifying license.zedit.app ES256 tokens (override via ZITA_LICENSE_PUBLIC_KEY_PEM in dev)
+// License stub is kept for IPC compatibility (site: licensing removed, app unlocked).
 const DEFAULT_LICENSE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEz2nF1p9F2a3Q8rP0bF7n0mJ9lR5K
 1yP8mT2xL4xG8k2cB0vH7a1pD9jE5nQ3uC6vV8xN4pR2zB1wK9sY2Q==
@@ -126,7 +126,7 @@ async function runSmokeProbe(win: BrowserWindow): Promise<void> {
       if (!hasBridge) return { hasBridge, shellMounted };
 
       const appInfo = await window.zita.app.getInfo();
-      const trial = await window.zita.license.startTrial(true);
+      const trial = await window.zita.license.getState();
       const folder = await window.zita.org.createFolder({ name: 'Smoke Clients' });
       const tag = await window.zita.org.createTag({ name: 'smoke-tag' });
       const proxy = await window.zita.proxies.create({
@@ -192,7 +192,7 @@ async function runSmokeProbe(win: BrowserWindow): Promise<void> {
     hasBridge: boolean;
     shellMounted: boolean;
     appInfo?: { ok: boolean; data?: { engineInstalled: boolean } };
-    trial?: { ok: boolean; data?: { status: string } };
+    trial?: { ok: boolean; data?: { status: string } }; // license state (unlocked)
     proxy?: { ok: boolean };
     createdSeed?: number | null;
     copiedSeed?: number | null;
@@ -209,7 +209,7 @@ async function runSmokeProbe(win: BrowserWindow): Promise<void> {
     probe.shellMounted &&
     Boolean(probe.appInfo?.ok && probe.appInfo.data?.engineInstalled) &&
     probe.trial?.ok === true &&
-    probe.trial.data?.status === 'trial' &&
+    probe.trial.data?.status === 'active' &&
     probe.proxy?.ok === true &&
     typeof probe.createdSeed === 'number' &&
     typeof probe.copiedSeed === 'number' &&

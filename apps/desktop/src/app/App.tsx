@@ -12,7 +12,6 @@ import { ToastProvider } from '@/components/ui/toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ActivityPage } from '@/features/activity/ActivityPage';
 import { LabPage } from '@/features/lab/LabPage';
-import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard';
 import { ProfileEditorPage } from '@/features/profiles/ProfileEditorPage';
 import { ProfilesPage } from '@/features/profiles/ProfilesPage';
 import { ProxiesPage } from '@/features/proxies/ProxiesPage';
@@ -86,13 +85,11 @@ function Shell() {
   const [tagId, setTagId] = useState<string | undefined>();
   const [search, setSearch] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const appInfoQuery = useQuery({ queryKey: ['appInfo'], queryFn: zitaIpc.getAppInfo });
   const engineQuery = useQuery({ queryKey: ['engineStatus'], queryFn: zitaIpc.getEngineStatus });
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: zitaIpc.getSettings });
-  const licenseQuery = useQuery({ queryKey: ['licenseState'], queryFn: zitaIpc.getLicenseState });
   const proxiesQuery = useQuery({ queryKey: ['proxiesList'], queryFn: zitaIpc.listProxies });
 
   useEffect(() => {
@@ -131,7 +128,6 @@ function Shell() {
   const refreshAll = () => {
     void qc.invalidateQueries({ queryKey: ['profilesOverview'] });
     void qc.invalidateQueries({ queryKey: ['proxiesList'] });
-    void qc.invalidateQueries({ queryKey: ['licenseState'] });
     void qc.invalidateQueries({ queryKey: ['activityList'] });
   };
 
@@ -230,16 +226,6 @@ function Shell() {
         },
       },
       {
-        id: 'nav-settings-license',
-        label: 'Settings: License & Activation',
-        group: 'Settings',
-        run: () => {
-          setEditingProfileId(undefined);
-          setSection('settings');
-          setSettingsTab('license');
-        },
-      },
-      {
         id: 'nav-settings-appearance',
         label: 'Settings: Appearance & Theme',
         group: 'Settings',
@@ -260,10 +246,6 @@ function Shell() {
     [sidebarOpen],
   );
 
-  const lic = licenseQuery.data;
-  const isReadOnlyBanner =
-    lic && (lic.status === 'expired' || lic.status === 'revoked' || lic.status === 'clock_tampered');
-  const showOnboarding = Boolean(lic && lic.status === 'unactivated' && !onboardingDismissed);
 
   return (
     <div
@@ -298,28 +280,6 @@ function Shell() {
         />
 
         <SidebarInset className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          {isReadOnlyBanner && (
-            <Alert variant="error" className="rounded-none border-x-0 border-t-0">
-              <AlertTriangle className="size-4" strokeWidth={1.5} />
-              <AlertDescription>
-                License status is <strong>{lic.status}</strong> — app is in read-only mode (profile launches blocked; metadata remains editable and exportable).
-              </AlertDescription>
-              <AlertAction>
-                <Button
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => {
-                    setEditingProfileId(undefined);
-                    setSection('settings');
-                    setSettingsTab('license');
-                  }}
-                >
-                  Manage license
-                </Button>
-              </AlertAction>
-            </Alert>
-          )}
-
           <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
             <PageErrorBoundary key={`${section}:${profileView}:${editingProfileId ?? ''}`}>
               {section === 'profiles' && editingProfileId !== undefined ? (
@@ -398,10 +358,7 @@ function Shell() {
                   settings={settingsQuery.data}
                   appInfo={appInfoQuery.data}
                   engine={engineQuery.data}
-                  license={licenseQuery.data}
-                  profileCount={overviewQuery.data?.counts.all ?? 0}
                   onUpdateSettings={(patch) => updateSettingsMutation.mutate(patch)}
-                  onRefreshLicense={refreshAll}
                   isSaving={updateSettingsMutation.isPending}
                   onOpenExternal={(url) => void zitaIpc.openExternal(url)}
                 />
@@ -412,17 +369,11 @@ function Shell() {
           <StatusBar
             appInfo={appInfoQuery.data}
             overview={overviewQuery.data}
-            license={licenseQuery.data}
             onOpenCommandPalette={() => setPaletteOpen(true)}
             onOpenEngineSettings={() => {
               setEditingProfileId(undefined);
               setSection('settings');
               setSettingsTab('engine');
-            }}
-            onOpenLicenseSettings={() => {
-              setEditingProfileId(undefined);
-              setSection('settings');
-              setSettingsTab('license');
             }}
           />
         </SidebarInset>
@@ -434,13 +385,6 @@ function Shell() {
         actions={commandActions}
       />
 
-      <OnboardingWizard
-        open={showOnboarding}
-        onOpenChange={(open) => !open && setOnboardingDismissed(true)}
-        license={licenseQuery.data}
-        engine={engineQuery.data}
-        onCompleted={refreshAll}
-      />
     </div>
   );
 }

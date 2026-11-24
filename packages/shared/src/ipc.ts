@@ -30,14 +30,9 @@ export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
 export const DensityPreferenceSchema = z.enum(['compact', 'comfortable']);
 export type DensityPreference = z.infer<typeof DensityPreferenceSchema>;
 
-export const LanguagePreferenceSchema = z.enum(['en', 'bn']);
-export type LanguagePreference = z.infer<typeof LanguagePreferenceSchema>;
-
 export const AppSettingsSchema = z.object({
   theme: ThemePreferenceSchema.default('system'),
   density: DensityPreferenceSchema.default('comfortable'),
-  language: LanguagePreferenceSchema.default('en'),
-  telemetryOptIn: z.boolean().default(false),
 });
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Search } from 'lucide-react';
+import { Activity, Clock, Search } from 'lucide-react';
 import type { ActivityLogItem } from '@zita/shared';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,6 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { RouteEmptyArt } from '@/components/ui/empty-art';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import {
@@ -52,7 +53,7 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
           </Badge>
         </PageHeading>
         <PageActions>
-          <div className="w-64">
+          <div className="w-52 shrink-0">
             <InputGroup>
               <InputGroupAddon align="inline-start">
                 <Search className="size-4" strokeWidth={1.5} />
@@ -81,12 +82,12 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
           ) : filtered.length === 0 ? (
             <Empty>
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Activity strokeWidth={1.5} />
+                <EmptyMedia variant="default">
+                  <RouteEmptyArt icon={Activity} badge={Clock} tone="indigo" />
                 </EmptyMedia>
                 <EmptyTitle>No recorded activity</EmptyTitle>
                 <EmptyDescription>
-                  Profile creates, launches, stops, imports, and license changes appear here with credentials redacted.
+                  Profile creates, launches, stops, and imports appear here with credentials redacted.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

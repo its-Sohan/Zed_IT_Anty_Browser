@@ -17,7 +17,6 @@ import type {
   HardwareTablePresetDto,
   Platform,
   ProfilesOverview,
-  ProxyProtocol,
   ProxySummary,
 } from '@zita/shared';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -39,19 +38,11 @@ import {
   CardPanel,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPanel,
-  DialogPopup,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CodeBlock } from '@/components/ui/meta';
 import {
   Page,
   PageActions,
@@ -60,6 +51,7 @@ import {
   PageTitle,
 } from '@/components/ui/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import {
   Select,
   SelectItem,
@@ -71,6 +63,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ProxyDialog } from '@/features/proxies/ProxyDialog';
 import { toastManager } from '@/components/ui/toast';
 import { zitaIpc } from '@/lib/ipc';
 import { cn } from '@/lib/utils';
@@ -89,12 +82,6 @@ export interface ProfileEditorPageProps {
 
 const NONE_VALUE = '__none__';
 
-const PROXY_PROTOCOL_ITEMS: Array<{ value: ProxyProtocol; label: string }> = [
-  { value: 'socks5', label: 'SOCKS5' },
-  { value: 'http', label: 'HTTP' },
-  { value: 'https', label: 'HTTPS' },
-];
-
 const OS_ITEMS: Array<{ value: Platform; label: string }> = [
   { value: 'windows', label: 'Windows' },
   { value: 'macos', label: 'macOS' },
@@ -110,14 +97,14 @@ const BRAND_ITEMS: Array<{ value: Brand; label: string }> = [
 ];
 
 const TZ_MODE_ITEMS: Array<{ value: 'auto' | 'manual'; label: string }> = [
-  { value: 'auto', label: 'Auto from proxy geo' },
-  { value: 'manual', label: 'Manual override' },
+  { value: 'auto', label: 'Auto' },
+  { value: 'manual', label: 'Manual' },
 ];
 
 const WEBRTC_ITEMS: Array<{ value: 'proxied' | 'disabled' | 'real'; label: string }> = [
-  { value: 'proxied', label: 'Proxied (non-proxied UDP disabled)' },
+  { value: 'proxied', label: 'Proxied' },
   { value: 'disabled', label: 'Disabled' },
-  { value: 'real', label: 'Real (not recommended)' },
+  { value: 'real', label: 'Real' },
 ];
 
 const DEFAULT_FP: FingerprintConfig = {
@@ -175,45 +162,11 @@ export function ProfileEditorPage({
   const [confirmClearCookies, setConfirmClearCookies] = useState(false);
 
   const [addProxyOpen, setAddProxyOpen] = useState(false);
-  const [pxLabel, setPxLabel] = useState('');
-  const [pxProto, setPxProto] = useState<ProxyProtocol>('socks5');
-  const [pxHost, setPxHost] = useState('');
-  const [pxPort, setPxPort] = useState('1080');
-  const [pxUser, setPxUser] = useState('');
-  const [pxPass, setPxPass] = useState('');
-  const [pxBusy, setPxBusy] = useState(false);
 
-  const handleCreateInlineProxy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPxBusy(true);
-    try {
-      const created = await zitaIpc.createProxy({
-        label: pxLabel,
-        protocol: pxProto,
-        host: pxHost,
-        port: Number.parseInt(pxPort, 10),
-        username: pxUser || null,
-        password: pxPass || null,
-      });
-      setProxyId(created.id);
-      setAddProxyOpen(false);
-      setPxLabel('');
-      setPxProto('socks5');
-      setPxHost('');
-      setPxPort('1080');
-      setPxUser('');
-      setPxPass('');
-      onProxyCreated?.();
-      toastManager.add({ title: 'Proxy added and assigned', type: 'success' });
-    } catch (err) {
-      toastManager.add({
-        title: 'Failed to add proxy',
-        description: err instanceof Error ? err.message : 'Invalid input',
-        type: 'error',
-      });
-    } finally {
-      setPxBusy(false);
-    }
+  const handleProxySaved = (saved: { id: string }) => {
+    setProxyId(saved.id);
+    onProxyCreated?.();
+    toastManager.add({ title: 'Proxy added and assigned', type: 'success' });
   };
 
   useEffect(() => {
@@ -495,11 +448,12 @@ export function ProfileEditorPage({
           <Skeleton className="h-32 w-full max-w-2xl" />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex min-h-0">
           {/* Left Section Nav */}
           <nav
             aria-label="Profile editor sections"
-            className="flex w-44 shrink-0 flex-col gap-0.5 border-r border-border/70 bg-muted/30 p-2"
+            className="sticky top-0 flex h-fit max-h-full w-44 shrink-0 flex-col gap-0.5 border-r border-border/70 bg-muted/30 p-2"
           >
             {(
               [
@@ -527,8 +481,7 @@ export function ProfileEditorPage({
           </nav>
 
           {/* Center Form */}
-          <ScrollArea className="min-w-0 flex-1">
-            <div className="mx-auto max-w-2xl space-y-4 p-5">
+            <div className="mx-auto min-w-0 max-w-2xl flex-1 space-y-4 p-5">
               {section === 'general' && (
                 <Card>
                   <CardHeader>
@@ -634,7 +587,7 @@ export function ProfileEditorPage({
 
                     {overview && overview.tags.length > 0 && (
                       <div className="space-y-1.5">
-                        <div className="text-sm font-medium">Tags</div>
+                        <FieldLabel>Tags</FieldLabel>
                         <div className="flex flex-wrap gap-1.5">
                           {overview.tags.map((t) => {
                             const active = tagIds.includes(t.id);
@@ -719,29 +672,22 @@ export function ProfileEditorPage({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3">
-                        <Field>
-                          <FieldLabel>OS</FieldLabel>
-                          <Select
-                            items={OS_ITEMS}
-                            value={fp.platform}
-                            onValueChange={(val) => {
-                              if (val) void handleRerollFingerprint(val as Platform);
-                            }}
-                          >
-                            <SelectTrigger className="min-w-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectPopup>
-                              {OS_ITEMS.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectPopup>
-                          </Select>
-                        </Field>
+                      <Field>
+                        <FieldLabel>OS</FieldLabel>
+                        <SegmentedControl aria-label="Operating system">
+                          {OS_ITEMS.map((item) => (
+                            <SegmentedControlItem
+                              key={item.value}
+                              data-checked={fp.platform === item.value ? '' : undefined}
+                              onClick={() => void handleRerollFingerprint(item.value)}
+                            >
+                              {item.label}
+                            </SegmentedControlItem>
+                          ))}
+                        </SegmentedControl>
+                      </Field>
 
+                      <div className="grid grid-cols-2 gap-3">
                         <Field>
                           <FieldLabel>OS Version</FieldLabel>
                           <Select
@@ -818,35 +764,34 @@ export function ProfileEditorPage({
                       <div className="grid grid-cols-2 gap-3 border-t pt-3">
                         <Field>
                           <FieldLabel>Timezone</FieldLabel>
-                          <Select
-                            items={TZ_MODE_ITEMS}
-                            value={fp.timezone.mode}
-                            onValueChange={(val) => {
-                              if (!val) return;
-                              const mode = val as 'auto' | 'manual';
-                              setFp({
-                                ...fp,
-                                timezone: {
-                                  mode,
-                                  value:
-                                    mode === 'manual'
-                                      ? fp.timezone.value ?? 'America/New_York'
-                                      : null,
-                                },
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="min-w-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectPopup>
-                              {TZ_MODE_ITEMS.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectPopup>
-                          </Select>
+                          <SegmentedControl aria-label="Timezone mode">
+                            {TZ_MODE_ITEMS.map((item) => (
+                              <SegmentedControlItem
+                                key={item.value}
+                                data-checked={fp.timezone.mode === item.value ? '' : undefined}
+                                onClick={() => {
+                                  const mode = item.value;
+                                  setFp({
+                                    ...fp,
+                                    timezone: {
+                                      mode,
+                                      value:
+                                        mode === 'manual'
+                                          ? fp.timezone.value ?? 'America/New_York'
+                                          : null,
+                                    },
+                                  });
+                                }}
+                              >
+                                {item.label}
+                              </SegmentedControlItem>
+                            ))}
+                          </SegmentedControl>
+                          <FieldDescription>
+                            {fp.timezone.mode === 'auto'
+                              ? 'Uses the assigned proxy geo.'
+                              : 'Overrides the proxy timezone for this profile.'}
+                          </FieldDescription>
                           {fp.timezone.mode === 'manual' && (
                             <Input
                               size="sm"
@@ -872,29 +817,22 @@ export function ProfileEditorPage({
 
                         <Field>
                           <FieldLabel>WebRTC Policy</FieldLabel>
-                          <Select
-                            items={WEBRTC_ITEMS}
-                            value={fp.webrtc.mode}
-                            onValueChange={(val) => {
-                              if (val) {
-                                setFp({
-                                  ...fp,
-                                  webrtc: { mode: val as 'proxied' | 'disabled' | 'real' },
-                                });
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="min-w-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectPopup>
-                              {WEBRTC_ITEMS.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectPopup>
-                          </Select>
+                          <SegmentedControl aria-label="WebRTC policy">
+                            {WEBRTC_ITEMS.map((item) => (
+                              <SegmentedControlItem
+                                key={item.value}
+                                data-checked={fp.webrtc.mode === item.value ? '' : undefined}
+                                onClick={() =>
+                                  setFp({ ...fp, webrtc: { mode: item.value } })
+                                }
+                              >
+                                {item.label}
+                              </SegmentedControlItem>
+                            ))}
+                          </SegmentedControl>
+                          <FieldDescription>
+                            Proxied blocks non-proxied UDP leaks; Real exposes your host IP.
+                          </FieldDescription>
                         </Field>
                       </div>
                     </CardPanel>
@@ -1045,23 +983,17 @@ export function ProfileEditorPage({
                     </Field>
 
                     {userDataDir && (
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground">
-                          Profile data directory
-                        </div>
-                        <div className="font-mono-tabular mt-1 break-all rounded-md border bg-muted/40 px-3 py-2 text-xs">
-                          {userDataDir}
-                        </div>
-                      </div>
+                      <CodeBlock label="Profile data directory" className="break-all">
+                        {userDataDir}
+                      </CodeBlock>
                     )}
                   </CardPanel>
                 </Card>
               )}
             </div>
-          </ScrollArea>
 
           {/* Right Live Summary Rail (§8.3) */}
-          <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border/70 bg-muted/30 p-4">
+          <aside className="sticky top-0 flex h-fit w-72 shrink-0 flex-col gap-3 self-start border-l border-border/70 bg-muted/30 p-4">
             <div className="type-micro text-muted-foreground">Identity Summary</div>
             <Frame>
               <FramePanel className="space-y-2 p-3 text-xs">
@@ -1101,7 +1033,8 @@ export function ProfileEditorPage({
               </Button>
             )}
           </aside>
-        </div>
+          </div>
+        </ScrollArea>
       )}
 
       <AlertDialog open={confirmClearCookies} onOpenChange={setConfirmClearCookies}>
@@ -1124,103 +1057,11 @@ export function ProfileEditorPage({
         </AlertDialogPopup>
       </AlertDialog>
 
-      <Dialog open={addProxyOpen} onOpenChange={setAddProxyOpen}>
-        <DialogPopup className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add proxy</DialogTitle>
-            <DialogDescription>
-              Add an HTTP, HTTPS, or SOCKS5 proxy and assign it to this profile.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateInlineProxy} className="contents">
-            <DialogPanel className="space-y-3">
-              <Field>
-                <FieldLabel htmlFor="inline-px-label">Label</FieldLabel>
-                <Input
-                  id="inline-px-label"
-                  required
-                  value={pxLabel}
-                  onChange={(e) => setPxLabel(e.target.value)}
-                  placeholder="US Residential 01"
-                />
-              </Field>
-              <div className="grid grid-cols-3 gap-2">
-                <Field>
-                  <FieldLabel>Protocol</FieldLabel>
-                  <Select
-                    items={PROXY_PROTOCOL_ITEMS}
-                    value={pxProto}
-                    onValueChange={(val) => {
-                      if (val) setPxProto(val as ProxyProtocol);
-                    }}
-                  >
-                    <SelectTrigger className="min-w-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectPopup>
-                      {PROXY_PROTOCOL_ITEMS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectPopup>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="inline-px-host">Host</FieldLabel>
-                  <Input
-                    id="inline-px-host"
-                    required
-                    value={pxHost}
-                    onChange={(e) => setPxHost(e.target.value)}
-                    placeholder="203.0.113.10"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="inline-px-port">Port</FieldLabel>
-                  <Input
-                    id="inline-px-port"
-                    required
-                    type="number"
-                    min={1}
-                    max={65535}
-                    value={pxPort}
-                    onChange={(e) => setPxPort(e.target.value)}
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Field>
-                  <FieldLabel htmlFor="inline-px-user">Username (optional)</FieldLabel>
-                  <Input
-                    id="inline-px-user"
-                    value={pxUser}
-                    onChange={(e) => setPxUser(e.target.value)}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="inline-px-pass">Password (optional)</FieldLabel>
-                  <Input
-                    id="inline-px-pass"
-                    type="password"
-                    value={pxPass}
-                    onChange={(e) => setPxPass(e.target.value)}
-                  />
-                </Field>
-              </div>
-            </DialogPanel>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setAddProxyOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="default" disabled={pxBusy}>
-                <CheckCircle2 className="size-3.5" strokeWidth={1.5} />
-                {pxBusy ? 'Saving...' : 'Save & assign'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogPopup>
-      </Dialog>
+      <ProxyDialog
+        open={addProxyOpen}
+        onOpenChange={setAddProxyOpen}
+        onSaved={handleProxySaved}
+      />
     </Page>
   );
 }

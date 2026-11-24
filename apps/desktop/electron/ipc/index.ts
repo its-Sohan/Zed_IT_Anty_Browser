@@ -132,8 +132,6 @@ function readSettingsFromDb(database: ZitaDatabase): AppSettings {
   return AppSettingsSchema.parse({
     theme: map.get('theme') ?? 'system',
     density: map.get('density') ?? 'comfortable',
-    language: map.get('language') ?? 'en',
-    telemetryOptIn: map.get('telemetryOptIn') === 'true',
   });
 }
 
@@ -231,10 +229,6 @@ export function registerIpcHandlers(ctx: IpcContext): void {
       const updates: Array<[string, string]> = [];
       if (parsed.data.theme !== undefined) updates.push(['theme', parsed.data.theme]);
       if (parsed.data.density !== undefined) updates.push(['density', parsed.data.density]);
-      if (parsed.data.language !== undefined) updates.push(['language', parsed.data.language]);
-      if (parsed.data.telemetryOptIn !== undefined) {
-        updates.push(['telemetryOptIn', String(parsed.data.telemetryOptIn)]);
-      }
       for (const [key, value] of updates) {
         ctx.database.db
           .insert(settings)

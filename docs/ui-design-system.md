@@ -12,7 +12,7 @@ One ramp, four roles. Never hardcode `text-[15px]`, `text-[11px]`, `tracking-wid
 | Role | Utility | Size / line | Weight | Use |
 |---|---|---|---|---|
 | Page title | `type-page-title` | 17 / 23 | 600 | One per route, in `PageTitle` |
-| Section / card title | `type-section-title` (`text-base`) | 15 / 22 | 600 | Card titles, settings groups |
+| Section / card title | `type-section-title` (`text-base`) | 15 / 22 | 600 | `CardTitle` / `FrameTitle` (both 15px), settings groups |
 | Body / UI | `text-sm` (default) | 13 / 20 | 400/500 | Everything interactive |
 | Meta | `text-xs` | 11 / 15 | 400 | IDs, timestamps, helper text, badges |
 | Micro label | `type-micro` | 11 / 16 | 600, `+0.06em`, uppercase | Sidebar groups, rail headers |
@@ -48,6 +48,10 @@ parent — add `overflow-hidden` to the parent (`FramePanel`, `CardPanel`).
 | Icon button (`icon-xs`), code chip | `rounded-md` (7) |
 | Badge / count pill | `rounded-sm` (5) |
 
+One surface per job: `Frame > FramePanel` for tables and lists, `Card` for
+forms and settings. Never mix them on the same page — titles and padding
+differ (`Card*` uses `p-5`, titles are 15px in both systems).
+
 ## 3. Spacing & bands
 
 4px base grid. Fixed chrome heights so columns line up across the app:
@@ -59,9 +63,11 @@ parent — add `overflow-hidden` to the parent (`FramePanel`, `CardPanel`).
 | Page body (`PageBody`) | — | `px-5 py-4` |
 | Card / FramePanel content | — | `p-5` (override to `p-4` only for dense lists) |
 | Table cell | 40 comfortable / 32 compact | `px-3` |
-| Status bar | 36 (`h-9`) | `px-2` |
+| Status bar | 36 (`h-9`) | `px-3` |
 
-Sidebar is 256px (`16rem`). Content max-widths: `max-w-4xl` (settings),
+Sidebar is 256px (`16rem`), `variant="inset"` — the provider paints `bg-sidebar`,
+the sidebar blends into it and the content floats as a `rounded-xl` card
+(`SidebarInset` + `m-2`). Content max-widths: `max-w-4xl` (settings),
 `max-w-5xl` (lab), `max-w-2xl` (editor form).
 
 ## 4. Color
@@ -101,15 +107,41 @@ Sidebar is 256px (`16rem`). Content max-widths: `max-w-4xl` (settings),
 Header action order: search → filters → secondary → primary. Icon only when the
 label is obvious; otherwise icon + label at `size="sm"`.
 
-**Table** — `Frame > FramePanel.overflow-hidden.p-0 > Table`, cells `px-3`.
-Sortable headers are ghost buttons with the same 40px height and 13px muted text;
-no uppercase.
+**Table** — `Frame > FramePanel.overflow-hidden.p-0 > Table`, cells `px-3`,
+no `min-w` hacks (the container scrolls). Sortable headers are ghost buttons
+with the same height as the body rows (40 comfortable / 32 compact) and 13px
+muted text; no uppercase. Row actions: primary action inline
+(Start/Stop/Test), everything else in a coss `Menu` (`⋯`) — never more than
+two controls plus the overflow button per row.
 
 **Nav rail** (profile editor): tinted rail (`bg-muted/30`), items are ghost buttons,
 the active item is `bg-background font-medium shadow-xs/5`. No left border bars.
+The editor is one `ScrollArea` for nav + form + summary rail (rails stick with
+`sticky top-0`, never scroll independently).
 
-**Bulk bar**: `rounded-xl border-border/80 bg-popover/95 backdrop-blur-xl shadow-lg`,
-sits `bottom-11` so it clears the status bar.
+**Pickers**: two or three mutually exclusive options use coss `SegmentedControl`
+(`data-checked` marks the active item), not `Select` or toggle `Button`s. Longer
+lists stay `Select`. `Select` remains the default for anything with 4+ options.
+
+**Data blocks**: read-only mono values use `CodeBlock` / `MetaRow` from
+`components/ui/meta`, not hand-rolled `rounded-md border bg-muted/40` divs.
+
+**Proxy forms**: use the shared `ProxyDialog` (`features/proxies/ProxyDialog.tsx`)
+for create/edit/inline-create — never duplicate the form.
+
+**Empty states**: `EmptyMedia variant="icon"` is a single 36px tile — every route
+looked identical. Use `EmptyMedia variant="default"` with `RouteEmptyArt`
+(`components/ui/empty-art.tsx`) per route (dashed backdrop + card tile +
+optional badge, toned `primary`/`teal`/`indigo`). The Lab pre-result `Card`
+carries the same art centred above its signal notes.
+
+**Chrome**: `StatusBar` is plain `bg-background border-t` like `PageHeader`,
+never a tinted band (`bg-muted/40`); its left engine label truncates so the
+inset card corners stay clean at narrow widths.
+
+**Bulk bar**: `absolute bottom-4 left-1/2 -translate-x-1/2` inside `Page`
+(`relative`, so it centers on content, not the viewport),
+`rounded-xl border-border/80 bg-popover/95 backdrop-blur-xl shadow-lg`.
 
 ## 6. Anti-patterns to grep for
 
@@ -123,8 +155,5 @@ rg '#fd0100|#d90000' apps/desktop/src          # colours outside globals.css
 
 ## 7. Known follow-ups
 
-- `ProxiesPage` / `ProfilesPage` row actions still use five separate icon buttons;
-  collapse into coss `Menu` on the row to cut visual noise.
 - Settings `Tabs` should become a vertical rail on wide windows (≥1100px).
-- Add `Empty` illustrations per route instead of a single icon tile.
 - Onboarding dialog could use the display size (24px) for its title.

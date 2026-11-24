@@ -29,9 +29,8 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'sticky top-0 z-20 flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2',
-        'border-b border-border/80 bg-background/85 px-5 py-2',
-        'supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl',
+        'z-20 flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2',
+        'border-b border-border/80 bg-background px-5 py-2',
         className,
       )}
       data-slot="page-header"
@@ -46,7 +45,7 @@ export function PageHeading({
 }: React.ComponentProps<'div'>): React.ReactElement {
   return (
     <div
-      className={cn('flex min-w-0 flex-wrap items-center gap-2.5', className)}
+      className={cn('flex min-w-0 flex-1 flex-wrap items-center gap-2.5', className)}
       data-slot="page-heading"
       {...props}
     />
@@ -85,7 +84,7 @@ export function PageActions({
 }: React.ComponentProps<'div'>): React.ReactElement {
   return (
     <div
-      className={cn('flex flex-wrap items-center gap-1.5', className)}
+      className={cn('flex shrink-0 flex-wrap items-center gap-1.5', className)}
       data-slot="page-actions"
       {...props}
     />

@@ -6,7 +6,7 @@
 ## Local-First Commitment
 - Browsing history, cookies, passwords, profile configurations, and proxy credentials remain strictly on your device inside `%APPDATA%\ZedIT\AntiBrowser` (or your configured storage directory).
 - Proxy passwords are encrypted at rest using OS-backed `safeStorage` + AES-256-GCM.
-- Telemetry is **off by default**.
+- No telemetry is collected.
 
 ## License Activation Data
 When activating or revalidating a license key, only the following fields are transmitted to the license service:

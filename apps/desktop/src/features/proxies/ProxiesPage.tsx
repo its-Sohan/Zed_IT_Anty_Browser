@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
-  CheckCircle2,
   Copy,
   Eye,
+  MoreHorizontal,
   Network,
   Pencil,
   Play,
@@ -31,9 +31,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { RouteEmptyArt } from '@/components/ui/empty-art';
 import { Frame, FramePanel } from '@/components/ui/frame';
-import { Input } from '@/components/ui/input';
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import {
   Page,
   PageActions,
@@ -62,7 +62,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { toastManager } from '@/components/ui/toast';
 import { zitaIpc } from '@/lib/ipc';
-import { cn } from '@/lib/utils';
+import { ProxyDialog } from './ProxyDialog';
 
 export interface ProxiesPageProps {
   proxies: ProxySummary[];
@@ -91,12 +91,6 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingProxy, setEditingProxy] = useState<ProxySummary | null>(null);
-  const [label, setLabel] = useState('');
-  const [protocol, setProtocol] = useState<ProxyProtocol>('socks5');
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState('1080');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
 
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkProto, setBulkProto] = useState<ProxyProtocol>('http');
@@ -110,61 +104,12 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
 
   const openCreateModal = () => {
     setEditingProxy(null);
-    setLabel('');
-    setProtocol('socks5');
-    setHost('');
-    setPort('1080');
-    setUsername('');
-    setPassword('');
     setEditModalOpen(true);
   };
 
   const openEditModal = (proxy: ProxySummary) => {
     setEditingProxy(proxy);
-    setLabel(proxy.label);
-    setProtocol(proxy.protocol);
-    setHost(proxy.host);
-    setPort(String(proxy.port));
-    setUsername(proxy.username ?? '');
-    setPassword('');
     setEditModalOpen(true);
-  };
-
-  const handleSaveProxy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const portNum = Number.parseInt(port, 10);
-      if (editingProxy) {
-        await zitaIpc.updateProxy({
-          id: editingProxy.id,
-          label,
-          protocol,
-          host,
-          port: portNum,
-          username: username || null,
-          password: password ? password : null,
-        });
-        toastManager.add({ title: 'Proxy updated', type: 'success' });
-      } else {
-        await zitaIpc.createProxy({
-          label,
-          protocol,
-          host,
-          port: portNum,
-          username: username || null,
-          password: password || null,
-        });
-        toastManager.add({ title: 'Proxy added', type: 'success' });
-      }
-      setEditModalOpen(false);
-      onRefresh();
-    } catch (err) {
-      toastManager.add({
-        title: 'Failed to save proxy',
-        description: err instanceof Error ? err.message : 'Invalid input',
-        type: 'error',
-      });
-    }
   };
 
   const handleTestOne = async (id: string) => {
@@ -267,8 +212,8 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
           ) : proxies.length === 0 ? (
             <Empty>
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Network strokeWidth={1.5} />
+                <EmptyMedia variant="default">
+                  <RouteEmptyArt icon={Network} badge={Plus} tone="teal" />
                 </EmptyMedia>
                 <EmptyTitle>No proxies configured</EmptyTitle>
                 <EmptyDescription>
@@ -288,15 +233,15 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
           ) : (
             <Frame>
               <FramePanel className="overflow-hidden p-0">
-                <Table className="min-w-[780px]">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="px-3">Label</TableHead>
-                      <TableHead className="px-3">Endpoint</TableHead>
-                      <TableHead className="px-3">Health / Geo</TableHead>
-                      <TableHead className="px-3 text-right">Traffic</TableHead>
-                      <TableHead className="px-3 text-right">Profiles</TableHead>
-                      <TableHead className="px-3 text-right">Actions</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3' : 'px-3'}>Label</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3' : 'px-3'}>Endpoint</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3' : 'px-3'}>Health / Geo</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3 text-right' : 'px-3 text-right'}>Traffic</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3 text-right' : 'px-3 text-right'}>Profiles</TableHead>
+                      <TableHead className={density === 'compact' ? 'h-8 px-3 text-right' : 'px-3 text-right'}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -349,56 +294,59 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
                                 <Play className="size-3" strokeWidth={1.5} />
                                 {testing ? 'Testing...' : 'Test'}
                               </Button>
-                              {proxy.hasAuth && (
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  title="Reveal password"
-                                  aria-label="Reveal password"
-                                  onClick={async () => {
-                                    const res = await zitaIpc.revealProxyPassword(proxy.id);
-                                    setRevealedPassword({
-                                      label: proxy.label,
-                                      value: res.password ?? '(no password set)',
-                                    });
-                                  }}
+                              <Menu>
+                                <MenuTrigger
+                                  render={
+                                    <Button
+                                      size="icon-sm"
+                                      variant="ghost"
+                                      aria-label="More actions"
+                                    />
+                                  }
                                 >
-                                  <Eye className="size-3.5" strokeWidth={1.5} />
-                                </Button>
-                              )}
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                title="Edit proxy"
-                                aria-label="Edit proxy"
-                                onClick={() => openEditModal(proxy)}
-                              >
-                                <Pencil className="size-3.5" strokeWidth={1.5} />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                title="Duplicate proxy"
-                                aria-label="Duplicate proxy"
-                                onClick={async () => {
-                                  await zitaIpc.duplicateProxy(proxy.id);
-                                  onRefresh();
-                                }}
-                              >
-                                <Copy className="size-3.5" strokeWidth={1.5} />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                title="Delete proxy"
-                                aria-label="Delete proxy"
-                                onClick={async () => {
-                                  await zitaIpc.deleteProxy(proxy.id);
-                                  onRefresh();
-                                }}
-                              >
-                                <Trash2 className="size-3.5" strokeWidth={1.5} />
-                              </Button>
+                                  <MoreHorizontal className="size-3.5" strokeWidth={1.5} />
+                                </MenuTrigger>
+                                <MenuPopup align="end">
+                                  {proxy.hasAuth && (
+                                    <MenuItem
+                                      onClick={async () => {
+                                        const res = await zitaIpc.revealProxyPassword(proxy.id);
+                                        setRevealedPassword({
+                                          label: proxy.label,
+                                          value: res.password ?? '(no password set)',
+                                        });
+                                      }}
+                                    >
+                                      <Eye className="size-3.5" strokeWidth={1.5} />
+                                      Reveal password
+                                    </MenuItem>
+                                  )}
+                                  <MenuItem onClick={() => openEditModal(proxy)}>
+                                    <Pencil className="size-3.5" strokeWidth={1.5} />
+                                    Edit proxy
+                                  </MenuItem>
+                                  <MenuItem
+                                    onClick={async () => {
+                                      await zitaIpc.duplicateProxy(proxy.id);
+                                      onRefresh();
+                                    }}
+                                  >
+                                    <Copy className="size-3.5" strokeWidth={1.5} />
+                                    Duplicate proxy
+                                  </MenuItem>
+                                  <MenuSeparator />
+                                  <MenuItem
+                                    variant="destructive"
+                                    onClick={async () => {
+                                      await zitaIpc.deleteProxy(proxy.id);
+                                      onRefresh();
+                                    }}
+                                  >
+                                    <Trash2 className="size-3.5" strokeWidth={1.5} />
+                                    Delete proxy
+                                  </MenuItem>
+                                </MenuPopup>
+                              </Menu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -412,108 +360,12 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
         </PageBody>
       </ScrollArea>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogPopup className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingProxy ? 'Edit proxy' : 'Add proxy'}</DialogTitle>
-            <DialogDescription>
-              Credentials are encrypted at rest and routed locally through a loopback SOCKS5 bridge.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSaveProxy} className="contents">
-            <DialogPanel className="space-y-3">
-              <Field>
-                <FieldLabel htmlFor="px-label">Label</FieldLabel>
-                <Input
-                  id="px-label"
-                  required
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="US Residential 01"
-                />
-              </Field>
-
-              <div className="grid grid-cols-3 gap-2">
-                <Field>
-                  <FieldLabel>Protocol</FieldLabel>
-                  <Select
-                    items={PROTOCOL_ITEMS}
-                    value={protocol}
-                    onValueChange={(val) => {
-                      if (val) setProtocol(val as ProxyProtocol);
-                    }}
-                  >
-                    <SelectTrigger className="min-w-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectPopup>
-                      {PROTOCOL_ITEMS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectPopup>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="px-host">Host</FieldLabel>
-                  <Input
-                    id="px-host"
-                    required
-                    value={host}
-                    onChange={(e) => setHost(e.target.value)}
-                    placeholder="203.0.113.10"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="px-port">Port</FieldLabel>
-                  <Input
-                    id="px-port"
-                    required
-                    type="number"
-                    min={1}
-                    max={65535}
-                    value={port}
-                    onChange={(e) => setPort(e.target.value)}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Field>
-                  <FieldLabel htmlFor="px-user">Username (optional)</FieldLabel>
-                  <Input
-                    id="px-user"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="px-pass">
-                    {editingProxy ? 'New password (leave blank to keep)' : 'Password (optional)'}
-                  </FieldLabel>
-                  <Input
-                    id="px-pass"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </Field>
-              </div>
-            </DialogPanel>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setEditModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="default">
-                <CheckCircle2 className="size-3.5" strokeWidth={1.5} />
-                Save proxy
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogPopup>
-      </Dialog>
+      <ProxyDialog
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        editingProxy={editingProxy}
+        onSaved={() => onRefresh()}
+      />
 
       {/* Bulk Add Dialog */}
       <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>

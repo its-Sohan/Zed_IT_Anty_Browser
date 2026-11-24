@@ -69,7 +69,7 @@ export function AppSidebar({
   const [newTagName, setNewTagName] = useState('');
 
   return (
-    <CossSidebar collapsible="icon" variant="sidebar">
+    <CossSidebar collapsible="icon" variant="inset">
       <SidebarHeader className="h-13 flex-row items-center justify-between gap-2 border-b border-sidebar-border px-2.5">
         {!collapsed ? (
           <div className="flex min-w-0 items-center gap-2">

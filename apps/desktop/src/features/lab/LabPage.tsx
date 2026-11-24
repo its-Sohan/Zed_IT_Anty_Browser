@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Copy, Download, FlaskConical, Play } from 'lucide-react';
+import { Copy, Download, FlaskConical, Play, ScanSearch } from 'lucide-react';
 import type { EngineStatus, LabCheckResult, Platform, ProfilesOverview, ProxySummary } from '@zita/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RouteEmptyArt } from '@/components/ui/empty-art';
 import {
   Card,
   CardAction,
@@ -160,7 +161,7 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
               setSelectedProfileId(val === TEMP_PROFILE_VALUE || !val ? '' : val)
             }
           >
-            <SelectTrigger size="sm" className="w-52" aria-label="Target profile for lab check">
+            <SelectTrigger size="sm" className="w-44" aria-label="Target profile for lab check">
               <SelectValue />
             </SelectTrigger>
             <SelectPopup>
@@ -181,7 +182,7 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
                   if (val) setTempOs(val as Platform);
                 }}
               >
-                <SelectTrigger size="sm" className="w-32 min-w-0" aria-label="Temporary OS">
+                <SelectTrigger size="sm" className="w-28 min-w-0" aria-label="Temporary OS">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectPopup>
@@ -200,7 +201,7 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
                   setTempProxyId(val === DIRECT_PROXY_VALUE || !val ? '' : val)
                 }
               >
-                <SelectTrigger size="sm" className="w-40" aria-label="Temporary Proxy">
+                <SelectTrigger size="sm" className="w-36" aria-label="Temporary Proxy">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectPopup>
@@ -253,28 +254,28 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="px-4">Signal</TableHead>
-                      <TableHead className="px-4">Expected</TableHead>
-                      <TableHead className="px-4">Observed</TableHead>
-                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-3">Signal</TableHead>
+                      <TableHead className="px-3">Expected</TableHead>
+                      <TableHead className="px-3">Observed</TableHead>
+                      <TableHead className="px-3">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {result.diff.map((row) => (
                       <TableRow key={row.signal} className="align-top">
-                        <TableCell className="whitespace-normal px-4 py-2.5">
+                        <TableCell className="whitespace-normal px-3 py-2.5">
                           <div className="font-medium text-foreground">{row.signal}</div>
                           <div className="mt-0.5 text-xs text-muted-foreground">
                             {row.explanation}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono-tabular whitespace-normal px-4 py-2.5 text-xs text-muted-foreground">
+                        <TableCell className="font-mono-tabular whitespace-normal px-3 py-2.5 text-xs text-muted-foreground">
                           {row.expected}
                         </TableCell>
-                        <TableCell className="font-mono-tabular max-w-xs break-all whitespace-normal px-4 py-2.5 text-xs text-foreground">
+                        <TableCell className="font-mono-tabular max-w-xs break-all whitespace-normal px-3 py-2.5 text-xs text-foreground">
                           {row.observed}
                         </TableCell>
-                        <TableCell className="px-4 py-2.5">
+                        <TableCell className="px-3 py-2.5">
                           <Badge variant={statusVariant(row.status)}>{statusLabel(row.status)}</Badge>
                         </TableCell>
                       </TableRow>
@@ -293,18 +294,23 @@ export function LabPage({ engine, overview, proxies, initialProfileId }: LabPage
                   probe and compare expected vs observed values.
                 </CardDescription>
               </CardHeader>
-              <CardPanel className="space-y-2 text-xs text-muted-foreground">
-                <p>
-                  • Supported & verified: OS platform, Client Hints, CPU cores, timezone, language,
-                  WebRTC host-IP block, and deterministic Canvas / Audio / ClientRects / Fonts
-                  hashes.
-                </p>
-                <p>• Seed-derived in v1: WebGL vendor/renderer and Device Memory.</p>
-                <p>
-                  • Explicitly unspoofed in v1 (shown honestly, never faked): host{' '}
-                  <code className="font-mono-tabular">screen.*</code> and{' '}
-                  <code className="font-mono-tabular">navigator.mediaDevices</code>.
-                </p>
+              <CardPanel className="space-y-5">
+                <div className="flex justify-center">
+                  <RouteEmptyArt icon={FlaskConical} badge={ScanSearch} tone="primary" />
+                </div>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    • Supported & verified: OS platform, Client Hints, CPU cores, timezone, language,
+                    WebRTC host-IP block, and deterministic Canvas / Audio / ClientRects / Fonts
+                    hashes.
+                  </p>
+                  <p>• Seed-derived in v1: WebGL vendor/renderer and Device Memory.</p>
+                  <p>
+                    • Explicitly unspoofed in v1 (shown honestly, never faked): host{' '}
+                    <code className="font-mono-tabular">screen.*</code> and{' '}
+                    <code className="font-mono-tabular">navigator.mediaDevices</code>.
+                  </p>
+                </div>
               </CardPanel>
             </Card>
           )}

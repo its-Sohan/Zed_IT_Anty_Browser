@@ -14,6 +14,7 @@ import {
   FlaskConical,
   FolderPlus,
   Link2,
+  MoreHorizontal,
   Pencil,
   Play,
   Plus,
@@ -45,14 +46,17 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { RouteEmptyArt } from '@/components/ui/empty-art';
 import { Frame, FramePanel } from '@/components/ui/frame';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import {
   Page,
   PageActions,
   PageBody,
+  PageDescription,
   PageHeading,
   PageHeader,
   PageTitle,
@@ -287,7 +291,7 @@ export function ProfilesPage({
     } catch (err) {
       toastManager.add({
         title: 'Cannot create profile',
-        description: err instanceof Error ? err.message : 'Check license limits',
+        description: err instanceof Error ? err.message : 'Failed to create profile',
         type: 'error',
       });
     }
@@ -348,10 +352,12 @@ export function ProfilesPage({
             <div className="flex min-w-0 items-center gap-2">
               <span
                 aria-hidden="true"
-                className="size-2 shrink-0 rounded-full"
-                style={{
-                  backgroundColor: row.original.running ? '#22C55E' : st?.color ?? '#9A9AA3',
-                }}
+                className={cn(
+                  'size-2 shrink-0 rounded-full',
+                  row.original.running && 'bg-success',
+                  !row.original.running && !st?.color && 'bg-muted-foreground/50',
+                )}
+                style={!row.original.running && st?.color ? { backgroundColor: st.color } : undefined}
               />
               <Button
                 variant="link"
@@ -464,64 +470,58 @@ export function ProfilesPage({
                   Start
                 </Button>
               )}
-              <Button
-                size="icon-sm"
-                variant={activeLinkRunIds.has(p.id) ? 'secondary' : 'ghost'}
-                title="Link Runner (auto-open & close tabs)"
-                aria-label="Open Link Runner"
-                className={activeLinkRunIds.has(p.id) ? 'text-primary' : undefined}
-                onClick={() => setLinkRunnerProfileId(p.id)}
-              >
-                <Link2 className="size-3.5" strokeWidth={1.5} />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Edit profile"
-                aria-label="Edit profile"
-                onClick={() => onEditProfile(p.id)}
-              >
-                <Pencil className="size-3.5" strokeWidth={1.5} />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Copy with new seed"
-                aria-label="Copy with new seed"
-                onClick={() => void handleCopy(p.id)}
-              >
-                <Copy className="size-3.5" strokeWidth={1.5} />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Check in Fingerprint Lab"
-                aria-label="Check in Fingerprint Lab"
-                onClick={() => onOpenLab(p.id)}
-              >
-                <FlaskConical className="size-3.5" strokeWidth={1.5} />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Move to Trash"
-                aria-label="Move to Trash"
-                disabled={p.running}
-                onClick={async () => {
-                  try {
-                    await zitaIpc.softDeleteProfile(p.id);
-                    onRefresh();
-                  } catch (err) {
-                    toastManager.add({
-                      title: 'Delete failed',
-                      description: err instanceof Error ? err.message : 'Error',
-                      type: 'error',
-                    });
+              <Menu>
+                <MenuTrigger
+                  render={
+                    <Button
+                      size="icon-sm"
+                      variant={activeLinkRunIds.has(p.id) ? 'secondary' : 'ghost'}
+                      aria-label="More actions"
+                      className={activeLinkRunIds.has(p.id) ? 'text-primary' : undefined}
+                    />
                   }
-                }}
-              >
-                <Trash2 className="size-3.5" strokeWidth={1.5} />
-              </Button>
+                >
+                  <MoreHorizontal className="size-3.5" strokeWidth={1.5} />
+                </MenuTrigger>
+                <MenuPopup align="end">
+                  <MenuItem onClick={() => setLinkRunnerProfileId(p.id)}>
+                    <Link2 className="size-3.5" strokeWidth={1.5} />
+                    Link Runner
+                  </MenuItem>
+                  <MenuItem onClick={() => onEditProfile(p.id)}>
+                    <Pencil className="size-3.5" strokeWidth={1.5} />
+                    Edit profile
+                  </MenuItem>
+                  <MenuItem onClick={() => void handleCopy(p.id)}>
+                    <Copy className="size-3.5" strokeWidth={1.5} />
+                    Copy with new seed
+                  </MenuItem>
+                  <MenuItem onClick={() => onOpenLab(p.id)}>
+                    <FlaskConical className="size-3.5" strokeWidth={1.5} />
+                    Check in Fingerprint Lab
+                  </MenuItem>
+                  <MenuSeparator />
+                  <MenuItem
+                    variant="destructive"
+                    disabled={p.running}
+                    onClick={async () => {
+                      try {
+                        await zitaIpc.softDeleteProfile(p.id);
+                        onRefresh();
+                      } catch (err) {
+                        toastManager.add({
+                          title: 'Delete failed',
+                          description: err instanceof Error ? err.message : 'Error',
+                          type: 'error',
+                        });
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.5} />
+                    Move to trash
+                  </MenuItem>
+                </MenuPopup>
+              </Menu>
             </div>
           );
         },
@@ -584,6 +584,18 @@ export function ProfilesPage({
             {sortedProfiles.length}
           </Badge>
           {hasFilters && (
+            <PageDescription>
+              {[
+                search.trim() && `Search “${search.trim()}”`,
+                activeFolderId && `Folder: ${overview?.folders.find((f) => f.id === activeFolderId)?.name ?? activeFolderId}`,
+                activeStatusId && `Status: ${overview?.statuses.find((s) => s.id === activeStatusId)?.name ?? activeStatusId}`,
+                activeTagId && `Tag: ${overview?.tags.find((t) => t.id === activeTagId)?.name ?? activeTagId}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </PageDescription>
+          )}
+          {hasFilters && (
             <Button size="xs" variant="ghost" onClick={onClearFilters}>
               Clear filters
             </Button>
@@ -591,7 +603,7 @@ export function ProfilesPage({
         </PageHeading>
 
         <PageActions>
-          <div className="w-60">
+          <div className="w-52 shrink-0">
             <InputGroup>
               <InputGroupAddon align="inline-start">
                 <Search className="size-4" strokeWidth={1.5} />
@@ -664,11 +676,15 @@ export function ProfilesPage({
           ) : sortedProfiles.length === 0 ? (
             <Empty>
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {view === 'trash' ? (
-                    <Trash2 strokeWidth={1.5} />
+                <EmptyMedia variant="default">
+                  {hasFilters ? (
+                    <RouteEmptyArt icon={Search} tone="primary" />
+                  ) : view === 'trash' ? (
+                    <RouteEmptyArt icon={Trash2} badge={RotateCcw} tone="indigo" />
+                  ) : view === 'running' ? (
+                    <RouteEmptyArt icon={Play} tone="teal" />
                   ) : (
-                    <FolderPlus strokeWidth={1.5} />
+                    <RouteEmptyArt icon={FolderPlus} badge={Plus} tone="primary" />
                   )}
                 </EmptyMedia>
                 <EmptyTitle>
@@ -712,7 +728,7 @@ export function ProfilesPage({
           ) : (
             <Frame>
               <FramePanel className="overflow-hidden p-0">
-                <Table className="min-w-[760px]">
+                <Table>
                   <TableCaption className="sr-only">Browser Profiles</TableCaption>
                   <TableHeader>
                     {table.getHeaderGroups().map((hg) => (
@@ -744,7 +760,10 @@ export function ProfilesPage({
                                   variant="ghost"
                                   size="xs"
                                   onClick={() => toggleSort(sortMeta.col, sortMeta.label)}
-                                  className="h-10 w-full justify-start gap-1 rounded-none border-0 px-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+                                  className={cn(
+                                    'w-full justify-start gap-1 rounded-none border-0 px-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground',
+                                    density === 'compact' ? 'h-8' : 'h-10',
+                                  )}
                                 >
                                   <span>{sortMeta.label}</span>
                                   {isSorted &&
@@ -787,7 +806,7 @@ export function ProfilesPage({
 
       {/* Bulk Bar (§8.3) */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-11 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-border/80 bg-popover/95 px-2.5 py-1.5 shadow-lg backdrop-blur-xl">
+        <div className="absolute bottom-4 left-1/2 z-30 flex max-w-full -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-popover/95 px-2.5 py-1.5 shadow-lg backdrop-blur-xl">
           <Badge variant="default" className="type-numeric mr-0.5">
             {selectedIds.size} selected
           </Badge>

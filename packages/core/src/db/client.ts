@@ -14,8 +14,6 @@ export const DEFAULT_STATUSES = [
 export const DEFAULT_SETTINGS: Record<string, string> = {
   theme: 'system',
   density: 'comfortable',
-  language: 'en',
-  telemetryOptIn: 'false',
 };
 
 const MIGRATION_V1_SQL = `

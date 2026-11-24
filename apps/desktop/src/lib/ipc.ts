@@ -84,13 +84,6 @@ export const zitaIpc = {
   runLabCheck: (input: Parameters<ZitaApi['lab']['runCheck']>[0]) =>
     unwrapIpc(window.zita.lab.runCheck(input)),
 
-  getLicenseState: () => unwrapIpc(window.zita.license.getState()),
-  startTrial: (aupAccepted: boolean) => unwrapIpc(window.zita.license.startTrial(aupAccepted)),
-  activateLicense: (input: Parameters<ZitaApi['license']['activate']>[0]) =>
-    unwrapIpc(window.zita.license.activate(input)),
-  revalidateLicense: (serverUrl?: string) => unwrapIpc(window.zita.license.revalidate(serverUrl)),
-  deactivateLicense: (serverUrl?: string) => unwrapIpc(window.zita.license.deactivate(serverUrl)),
-
   listActivity: (limit?: number) => unwrapIpc(window.zita.activity.list(limit)),
   getEngineStatus: () => unwrapIpc(window.zita.engine.status()),
   openExternal: (url: string) => unwrapIpc(window.zita.window.openExternal(url)),
