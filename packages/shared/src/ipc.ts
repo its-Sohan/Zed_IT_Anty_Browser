@@ -337,6 +337,62 @@ export interface HardwareTablePresetDto {
   hardware: Array<{ cpuCores: number; memoryGb: number; gpuVendor: string; gpuRenderer: string }>;
 }
 
+export const StartLinkRunInputSchema = z.object({
+  profileId: z.string().min(1),
+  urls: z
+    .array(
+      z
+        .string()
+        .trim()
+        .url('Each link must be a valid URL')
+        .refine((val) => val.startsWith('http://') || val.startsWith('https://'), {
+          message: 'Only http:// and https:// links are supported',
+        }),
+    )
+    .min(1, 'Provide at least 1 link')
+    .max(50, 'Maximum 50 links per run'),
+  loadTimeoutMs: z.number().int().min(3_000).max(120_000).default(25_000),
+  hangTimeoutMs: z.number().int().min(2_000).max(60_000).default(8_000),
+  dwellAfterLoadMs: z.number().int().min(0).max(60_000).default(1_000),
+  loop: z.boolean().default(false),
+});
+export type StartLinkRunInput = z.infer<typeof StartLinkRunInputSchema>;
+
+export type LinkRunItemStatus =
+  | 'pending'
+  | 'loading'
+  | 'loaded'
+  | 'crashed'
+  | 'stuttered'
+  | 'timeout'
+  | 'error'
+  | 'skipped';
+
+export interface LinkRunItemState {
+  index: number;
+  url: string;
+  status: LinkRunItemStatus;
+  durationMs: number | null;
+  reason?: string;
+}
+
+export interface LinkRunState {
+  profileId: string;
+  status: 'idle' | 'running' | 'completed' | 'stopped' | 'error';
+  currentIndex: number;
+  cycleCount: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error?: string;
+  config: {
+    loadTimeoutMs: number;
+    hangTimeoutMs: number;
+    dwellAfterLoadMs: number;
+    loop: boolean;
+  };
+  items: LinkRunItemState[];
+}
+
 export interface ZitaApi {
   app: {
     getInfo: () => Promise<IpcResponse<AppInfo>>;
@@ -408,7 +464,13 @@ export interface ZitaApi {
   window: {
     openExternal: (url: string) => Promise<IpcResponse<{ opened: boolean }>>;
   };
+  linkRunner: {
+    start: (input: Partial<Omit<StartLinkRunInput, 'profileId' | 'urls'>> & Pick<StartLinkRunInput, 'profileId' | 'urls'>) => Promise<IpcResponse<LinkRunState>>;
+    stop: (profileId: string) => Promise<IpcResponse<LinkRunState>>;
+    status: (profileId: string) => Promise<IpcResponse<LinkRunState>>;
+  };
   events: {
     onProfileStatusChanged: (cb: (event: ProfileStatusEvent) => void) => () => void;
+    onLinkRunnerUpdated: (cb: (state: LinkRunState) => void) => () => void;
   };
 }
