@@ -9,6 +9,7 @@
     "dev:desktop": "pnpm --filter @zita/desktop dev",
     "build:desktop": "pnpm --filter @zita/desktop build",
     "build:win": "tsx scripts/build-win-installer.ts",
+    "build:linux": "tsx scripts/build-linux-appimage.ts",
     "rebuild:native": "pnpm --filter @zita/desktop rebuild",
     "engine:fetch": "tsx scripts/fetch-engine.ts",
     "spike:verify": "tsx scripts/spike-verify.ts"

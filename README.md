@@ -23,4 +23,6 @@ pnpm test                               # Run unit & integration tests (via Elec
 pnpm spike:verify                       # Run Week 0 live browser verification spike
 pnpm dev:desktop                        # Launch desktop app in dev mode
 pnpm build:desktop                      # Build Electron main, preload, and renderer
+pnpm build:win                          # Build Windows amd64 NSIS installer (.exe)
+pnpm build:linux                        # Build Linux x86_64 AppImage (.AppImage)
 ```

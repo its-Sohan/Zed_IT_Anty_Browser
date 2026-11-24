@@ -116,18 +116,55 @@ async function downloadWithHash(
   };
 }
 
+async function renameWithRetry(src: string, dest: string, attempts = 5): Promise<void> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await rename(src, dest);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (i < attempts - 1 && (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES')) {
+        await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 function extractArchive(archivePath: string, destDir: string, platform: EnginePlatform): void {
   if (platform === 'linux-x64') {
     const res = spawnSync('tar', ['-xJf', archivePath, '-C', destDir], { stdio: 'inherit' });
-    if (res.status !== 0) {
-      throw new Error(`tar extraction failed with exit code ${res.status}`);
+    if (res.error || res.status !== 0) {
+      throw new Error(`tar extraction failed with exit code ${res.status ?? res.error?.message}`);
+    }
+    return;
+  }
+
+  if (process.platform === 'win32') {
+    const tarRes = spawnSync('tar', ['-xf', archivePath, '-C', destDir], { stdio: 'inherit' });
+    if (!tarRes.error && tarRes.status === 0) {
+      return;
+    }
+    const psRes = spawnSync(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        `Expand-Archive -LiteralPath '${archivePath.replaceAll("'", "''")}' -DestinationPath '${destDir.replaceAll("'", "''")}' -Force`,
+      ],
+      { stdio: 'inherit' },
+    );
+    if (psRes.error || psRes.status !== 0) {
+      throw new Error(`Windows zip extraction failed with exit code ${psRes.status ?? psRes.error?.message}`);
     }
     return;
   }
 
   const res = spawnSync('unzip', ['-q', archivePath, '-d', destDir], { stdio: 'inherit' });
-  if (res.status !== 0) {
-    throw new Error(`unzip extraction failed with exit code ${res.status}`);
+  if (res.error || res.status !== 0) {
+    throw new Error(`unzip extraction failed with exit code ${res.status ?? res.error?.message}`);
   }
 }
 
@@ -227,7 +264,7 @@ async function main(): Promise<void> {
     if (await fileExists(targetDir)) {
       await rm(targetDir, { recursive: true, force: true });
     }
-    await rename(extractDir, targetDir);
+    await renameWithRetry(extractDir, targetDir);
     console.log(`Engine ready: ${path.join(targetDir, relExe)}`);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
