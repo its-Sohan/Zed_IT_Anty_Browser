@@ -315,7 +315,7 @@ export interface CsvPreviewDto {
   validRows: Array<{
     rowNumber: number;
     name: string;
-    os: 'windows' | 'macos' | 'linux';
+    os: 'windows' | 'macos' | 'linux' | 'android';
     osVersion?: string;
     proxy?: { protocol: 'http' | 'https' | 'socks5'; host: string; port: number; username?: string; password?: string };
     tags: string[];
@@ -401,7 +401,7 @@ export interface ZitaApi {
     overview: (filter?: Partial<ProfileListFilter>) => Promise<IpcResponse<ProfilesOverview>>;
     get: (id: string) => Promise<IpcResponse<ProfileDetail>>;
     create: (input: CreateProfileInputDto) => Promise<IpcResponse<ProfileDetail>>;
-    quickCreate: (os?: 'windows' | 'macos' | 'linux') => Promise<IpcResponse<ProfileDetail>>;
+    quickCreate: (os?: 'windows' | 'macos' | 'linux' | 'android') => Promise<IpcResponse<ProfileDetail>>;
     update: (input: UpdateProfileInputDto) => Promise<IpcResponse<ProfileDetail>>;
     copy: (input: { id: string; name?: string; randomizeSeed?: boolean; copyCookies?: boolean }) => Promise<IpcResponse<ProfileDetail>>;
     softDelete: (id: string) => Promise<IpcResponse<{ deleted: boolean }>>;
@@ -438,7 +438,7 @@ export interface ZitaApi {
   };
   fingerprint: {
     generate: (input: { os: z.infer<typeof PlatformSchema>; osVersion?: string; seed?: number; brand?: z.infer<typeof BrandSchema>; timezone?: string | null; locale?: string | null }) => Promise<IpcResponse<z.infer<typeof FingerprintConfigSchema>>>;
-    hardwarePresets: () => Promise<IpcResponse<Record<'windows' | 'macos' | 'linux', HardwareTablePresetDto>>>;
+    hardwarePresets: () => Promise<IpcResponse<Record<'windows' | 'macos' | 'linux' | 'android', HardwareTablePresetDto>>>;
   };
   lab: {
     runCheck: (input: { profileId?: string; fingerprint?: z.infer<typeof FingerprintConfigSchema>; proxyId?: string | null }) => Promise<IpcResponse<LabCheckResult>>;

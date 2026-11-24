@@ -6,10 +6,10 @@
 |---|---|
 | Document | Product & Build Plan |
 | Version | 1.0 — Draft |
-| Date | 23 November 2026 |
+| Date | 25 November 2026 |
 | Owner | ZED IT |
 | Product | Zed IT Anti Browser |
-| Platforms | Windows (v1), Linux (development / internal) |
+| Platforms | Windows (v1), Linux (development / internal). Profile OS options: Windows, macOS, Linux, Android (partial spoof) |
 | Business model | Paid license keys |
 | Status | Planning — pending build approval |
 
@@ -58,7 +58,7 @@ Zed IT Anti Browser is a desktop application that creates isolated browser profi
 - Cookie import (Netscape and JSON), start pages, and basic bookmarks.
 - Built-in Fingerprint Lab for verifying what test sites actually see.
 - Signed license-key activation with plans, device limits, trial mode, and offline grace.
-- No public API, team accounts, cloud sync, script builder, or mobile profiles in v1.
+- No public API, team accounts, cloud sync, script builder, or native mobile profiles in v1. Android is available only as a partial OS spoof (see §6.3).
 
 **Why it can win:**
 
@@ -377,7 +377,7 @@ v1 is not a technology moat; it is execution. The durable advantages are:
 - MCP server for AI agents.
 - Team members, roles, sharing, cloud sync.
 - Script builder, cookie robot, synchronizer, bulk editing beyond the listed actions.
-- Mobile/Android profiles and cloud phones.
+- Native mobile/Android profiles and cloud phones. The partial Android OS spoof in §6.3 is the only mobile item in v1. iOS is not offered.
 - Built-in proxy sales.
 - Profile marketplace or renting.
 - macOS build.
@@ -388,7 +388,8 @@ Based on `fingerprint-chromium` documentation for Chromium 150 and subject to We
 
 | Signal | v1 status | Notes |
 |---|---|---|
-| Platform / OS | Supported | `--fingerprint-platform` |
+| Platform / OS | Supported | `--fingerprint-platform`: `windows`, `macos`, `linux` |
+| Android OS spoof | **Gap (partial)** | Engine has no `android` platform. Profile is sent as `linux`, so navigator.platform and Client Hints read desktop Linux. Touch, mobile viewport, and mobile UA are not emulated. Lab reports the mismatch. iOS not offered (iOS browsers require WebKit) |
 | Platform version | Supported | `--fingerprint-platform-version` |
 | Browser brand and version | Supported | `--fingerprint-brand`, `--fingerprint-brand-version` |
 | User-Agent and Client Hints | Supported | Derived from brand/platform/version |
@@ -450,7 +451,7 @@ Requirement IDs are for tracking, not for user-facing copy.
 | FR-011 | Generate fingerprint | A new profile gets a coherent config from seed; no invalid CPU/RAM/GPU combinations |
 | FR-012 | Re-roll | “New fingerprint” creates a new seed and refreshes generated values |
 | FR-013 | Read back | After launch, observed values are captured via CDP and displayed on the fingerprint tab |
-| FR-014 | OS selection | Windows 10, Windows 11, macOS, Linux; engine flag and UA match |
+| FR-014 | OS selection | Windows 10, Windows 11, macOS, Linux; engine flag and UA match. Android 13–15 is a partial exception: engine flag is `linux`, and the Lab must show the navigator/Client Hints mismatch |
 | FR-015 | Timezone and locale | Auto from proxy geo by default; manual override with warning if mismatched |
 | FR-016 | WebRTC | Proxied/non-proxied UDP disabled by default; no host IP leak in the lab |
 | FR-017 | Spoofing toggles | Canvas, audio, fonts, client rects, GPU can be disabled where the engine supports it |
@@ -874,7 +875,7 @@ licenses (local cache)
 | `status_id` | text FK | Default “Active” |
 | `notes` | text | Nullable |
 | `proxy_id` | text FK | Nullable |
-| `os` | text | `windows`, `macos`, `linux` |
+| `os` | text | `windows`, `macos`, `linux`, `android` |
 | `os_version` | text | e.g. `10`, `11`, `15.2.0` |
 | `seed` | integer | 32-bit signed |
 | `fingerprint_json` | text | Versioned config |

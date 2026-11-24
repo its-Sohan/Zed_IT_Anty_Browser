@@ -75,7 +75,7 @@ export function generateFingerprint(input: GenerateFingerprintInput): Fingerprin
       mode: 'host',
       width: res.width,
       height: res.height,
-      deviceScaleFactor: input.os === 'macos' ? 2 : 1,
+      deviceScaleFactor: input.os === 'android' ? 2.625 : input.os === 'macos' ? 2 : 1,
     },
     timezone: {
       mode: tzValue ? 'manual' : 'auto',
@@ -111,12 +111,14 @@ export function generateFingerprint(input: GenerateFingerprintInput): Fingerprin
 function expectedNavigatorPlatform(os: Platform): string {
   if (os === 'windows') return 'Win32';
   if (os === 'macos') return 'MacIntel';
+  if (os === 'android') return 'Linux armv81';
   return 'Linux x86_64';
 }
 
 function expectedUadPlatform(os: Platform): string {
   if (os === 'windows') return 'Windows';
   if (os === 'macos') return 'macOS';
+  if (os === 'android') return 'Android';
   return 'Linux';
 }
 
@@ -151,11 +153,12 @@ export function compareExpectedVsObserved(
   });
 
   const expectedUaToken = `${expected.brand}/${expected.brandVersion}.`;
+  const hasExpectedUaOs = expected.platform === 'android' ? observed.userAgent.includes('Android') : true;
   rows.push({
     signal: 'navigator.userAgent',
     expected: `${expected.brand} ${expected.brandVersion} (${expUadPlatform})`,
     observed: observed.userAgent,
-    status: observed.userAgent.includes(expectedUaToken) ? 'pass' : 'warn',
+    status: observed.userAgent.includes(expectedUaToken) && hasExpectedUaOs ? 'pass' : 'warn',
     explanation: 'Primary browser brand, major version, and OS string.',
   });
 

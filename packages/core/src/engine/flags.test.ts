@@ -64,6 +64,20 @@ describe('composeEngineFlags', () => {
     expect(flags.some((f) => f.startsWith('--disable-spoofing='))).toBe(false);
   });
 
+  it('sends Android profiles to the engine as linux, since the engine has no android platform', () => {
+    const opts = baseOptions();
+    opts.fingerprint.platform = 'android';
+    opts.fingerprint.platformVersion = '14';
+
+    const flags = composeEngineFlags(opts);
+    expect(flags).toContain('--fingerprint-platform=linux');
+    expect(flags).toContain('--fingerprint-platform-version=14');
+    expect(flags).not.toContain('--fingerprint-platform=android');
+    expect(flags).toContain(
+      '--user-agent=Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36',
+    );
+  });
+
   it('maps disabled spoofing toggles to upstream --disable-spoofing values', () => {
     const opts = baseOptions();
     opts.fingerprint.spoofing = {

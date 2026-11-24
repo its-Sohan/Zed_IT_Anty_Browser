@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const PlatformSchema = z.enum(['windows', 'macos', 'linux']);
+export const PlatformSchema = z.enum(['windows', 'macos', 'linux', 'android']);
 export type Platform = z.infer<typeof PlatformSchema>;
 
 export const BrandSchema = z.enum(['Chrome', 'Edge', 'Opera', 'Vivaldi', 'Chromium']);

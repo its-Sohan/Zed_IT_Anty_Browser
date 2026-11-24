@@ -53,6 +53,7 @@ const OS_ITEMS: Array<{ value: Platform; label: string }> = [
   { value: 'windows', label: 'Windows' },
   { value: 'macos', label: 'macOS' },
   { value: 'linux', label: 'Linux' },
+  { value: 'android', label: 'Android' },
 ];
 
 export function LabPage({ engine, overview, proxies, initialProfileId }: LabPageProps) {

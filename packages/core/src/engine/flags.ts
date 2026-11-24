@@ -44,15 +44,24 @@ export function composeEngineFlags(rawOptions: EngineLaunchOptions): string[] {
   const options = EngineLaunchOptionsSchema.parse(rawOptions);
   const { fingerprint } = options;
 
+  // fingerprint-chromium only accepts windows|macos|linux; Android profiles fall back to linux here.
+  const enginePlatform = fingerprint.platform === 'android' ? 'linux' : fingerprint.platform;
+
   const flags: string[] = [
     `--user-data-dir=${options.userDataDir}`,
     `--fingerprint=${fingerprint.seed}`,
-    `--fingerprint-platform=${fingerprint.platform}`,
+    `--fingerprint-platform=${enginePlatform}`,
     `--fingerprint-platform-version=${fingerprint.platformVersion}`,
     `--fingerprint-brand=${fingerprint.brand}`,
     `--fingerprint-brand-version=${fingerprint.brandVersion}`,
     `--fingerprint-hardware-concurrency=${fingerprint.hardware.cpuCores}`,
   ];
+
+  if (fingerprint.platform === 'android') {
+    flags.push(
+      `--user-agent=Mozilla/5.0 (Linux; Android ${fingerprint.platformVersion}; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${fingerprint.brandVersion}.0.0.0 Mobile Safari/537.36`,
+    );
+  }
 
   if (fingerprint.locale.value) {
     flags.push(`--lang=${fingerprint.locale.value}`);

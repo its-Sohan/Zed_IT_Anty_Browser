@@ -200,8 +200,8 @@ export function previewCsvImport(
     }
 
     const osRaw = (osCol !== -1 ? row[osCol] : 'windows')?.trim().toLowerCase() || 'windows';
-    if (osRaw !== 'windows' && osRaw !== 'macos' && osRaw !== 'linux') {
-      errors.push({ row: rowNumber, message: `Unsupported OS "${osRaw}" (use windows, macos, or linux)` });
+    if (osRaw !== 'windows' && osRaw !== 'macos' && osRaw !== 'linux' && osRaw !== 'android') {
+      errors.push({ row: rowNumber, message: `Unsupported OS "${osRaw}" (use windows, macos, linux, or android)` });
       return;
     }
 

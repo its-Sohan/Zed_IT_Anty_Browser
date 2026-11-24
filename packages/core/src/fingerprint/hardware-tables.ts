@@ -129,4 +129,33 @@ export const HARDWARE_TABLES: Record<Platform, OsHardwareTable> = {
       },
     ],
   },
+  android: {
+    osVersions: ['13', '14', '15'],
+    resolutions: [
+      { width: 412, height: 915 },
+      { width: 360, height: 800 },
+      { width: 393, height: 873 },
+      { width: 360, height: 780 },
+    ],
+    hardware: [
+      {
+        cpuCores: 8,
+        memoryGb: 8,
+        gpuVendor: 'Google Inc. (Qualcomm)',
+        gpuRenderer: 'ANGLE (Qualcomm, Adreno (TM) 730, OpenGL ES 3.2)',
+      },
+      {
+        cpuCores: 8,
+        memoryGb: 12,
+        gpuVendor: 'Google Inc. (Qualcomm)',
+        gpuRenderer: 'ANGLE (Qualcomm, Adreno (TM) 740, OpenGL ES 3.2)',
+      },
+      {
+        cpuCores: 8,
+        memoryGb: 8,
+        gpuVendor: 'Google Inc. (ARM)',
+        gpuRenderer: 'ANGLE (ARM, Mali-G710 MC10, OpenGL ES 3.2)',
+      },
+    ],
+  },
 };

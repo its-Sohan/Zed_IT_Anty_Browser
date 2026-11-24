@@ -36,7 +36,7 @@ export const zitaIpc = {
   getProfile: (id: string) => unwrapIpc(window.zita.profiles.get(id)),
   createProfile: (input: Parameters<ZitaApi['profiles']['create']>[0]) =>
     unwrapIpc(window.zita.profiles.create(input)),
-  quickCreateProfile: (os?: 'windows' | 'macos' | 'linux') =>
+  quickCreateProfile: (os?: 'windows' | 'macos' | 'linux' | 'android') =>
     unwrapIpc(window.zita.profiles.quickCreate(os)),
   updateProfile: (input: Parameters<ZitaApi['profiles']['update']>[0]) =>
     unwrapIpc(window.zita.profiles.update(input)),

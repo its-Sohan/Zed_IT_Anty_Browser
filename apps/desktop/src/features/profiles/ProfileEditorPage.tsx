@@ -86,6 +86,7 @@ const OS_ITEMS: Array<{ value: Platform; label: string }> = [
   { value: 'windows', label: 'Windows' },
   { value: 'macos', label: 'macOS' },
   { value: 'linux', label: 'Linux' },
+  { value: 'android', label: 'Android' },
 ];
 
 const BRAND_ITEMS: Array<{ value: Brand; label: string }> = [
