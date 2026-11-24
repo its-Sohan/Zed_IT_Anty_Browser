@@ -233,7 +233,7 @@ export function AppSidebar({
               <SidebarGroupContent>
                 {addingFolder && (
                   <form
-                    className="mb-1.5 px-1"
+                    className="animate-panel-enter mb-1.5 px-1"
                     onSubmit={async (e) => {
                       e.preventDefault();
                       if (!newFolderName.trim()) return;
@@ -282,7 +282,7 @@ export function AppSidebar({
               <SidebarGroupContent>
                 {addingTag && (
                   <form
-                    className="mb-1.5 px-1"
+                    className="animate-panel-enter mb-1.5 px-1"
                     onSubmit={async (e) => {
                       e.preventDefault();
                       if (!newTagName.trim()) return;

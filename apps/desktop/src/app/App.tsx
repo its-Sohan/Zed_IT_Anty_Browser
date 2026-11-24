@@ -1,5 +1,5 @@
-import { Component, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
+import { keepPreviousData, QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import type { UpdateSettingsInput } from '@zita/shared';
 import { CommandPalette, type CommandAction } from '@/app/CommandPalette';
@@ -8,21 +8,35 @@ import { StatusBar } from '@/app/StatusBar';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { Spinner } from '@/components/ui/spinner';
 import { ToastProvider } from '@/components/ui/toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ActivityPage } from '@/features/activity/ActivityPage';
-import { LabPage } from '@/features/lab/LabPage';
-import { ProfileEditorPage } from '@/features/profiles/ProfileEditorPage';
 import { ProfilesPage } from '@/features/profiles/ProfilesPage';
-import { ProxiesPage } from '@/features/proxies/ProxiesPage';
-import { SettingsPage, type SettingsTab } from '@/features/settings/SettingsPage';
+import type { SettingsTab } from '@/features/settings/SettingsPage';
 import { zitaIpc } from '@/lib/ipc';
 import { applyThemePreference } from '@/lib/theme';
+
+const ActivityPage = lazy(() =>
+  import('@/features/activity/ActivityPage').then((m) => ({ default: m.ActivityPage })),
+);
+const LabPage = lazy(() =>
+  import('@/features/lab/LabPage').then((m) => ({ default: m.LabPage })),
+);
+const ProfileEditorPage = lazy(() =>
+  import('@/features/profiles/ProfileEditorPage').then((m) => ({ default: m.ProfileEditorPage })),
+);
+const ProxiesPage = lazy(() =>
+  import('@/features/proxies/ProxiesPage').then((m) => ({ default: m.ProxiesPage })),
+);
+const SettingsPage = lazy(() =>
+  import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
+      staleTime: 10_000,
       refetchOnWindowFocus: false,
     },
   },
@@ -84,8 +98,14 @@ function Shell() {
   const [statusId, setStatusId] = useState<string | undefined>();
   const [tagId, setTagId] = useState<string | undefined>();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 150);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const appInfoQuery = useQuery({ queryKey: ['appInfo'], queryFn: zitaIpc.getAppInfo });
   const engineQuery = useQuery({ queryKey: ['engineStatus'], queryFn: zitaIpc.getEngineStatus });
@@ -99,15 +119,16 @@ function Shell() {
   }, [settingsQuery.data?.theme]);
 
   const overviewQuery = useQuery({
-    queryKey: ['profilesOverview', profileView, folderId, statusId, tagId, search],
+    queryKey: ['profilesOverview', profileView, folderId, statusId, tagId, debouncedSearch],
     queryFn: () =>
       zitaIpc.getProfilesOverview({
         view: profileView,
         folderId,
         statusId,
         tagId,
-        search,
+        search: debouncedSearch,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const activityQuery = useQuery({
@@ -282,7 +303,18 @@ function Shell() {
         <SidebarInset className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
             <PageErrorBoundary key={`${section}:${profileView}:${editingProfileId ?? ''}`}>
-              {section === 'profiles' && editingProfileId !== undefined ? (
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center">
+                    <Spinner className="size-5 text-muted-foreground" />
+                  </div>
+                }
+              >
+                <div
+                  key={`${section}:${editingProfileId === undefined ? 'list' : 'editor'}`}
+                  className="animate-page-enter h-full min-h-0"
+                >
+                  {section === 'profiles' && editingProfileId !== undefined ? (
                 <ProfileEditorPage
                   profileId={editingProfileId}
                   overview={overviewQuery.data}
@@ -363,6 +395,8 @@ function Shell() {
                   onOpenExternal={(url) => void zitaIpc.openExternal(url)}
                 />
               )}
+                </div>
+              </Suspense>
             </PageErrorBoundary>
           </div>
 

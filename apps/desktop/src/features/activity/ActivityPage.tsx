@@ -73,10 +73,18 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
         <PageBody>
           {isLoading ? (
             <Frame>
-              <FramePanel className="space-y-3 p-4">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-5 w-1/2" />
+              <FramePanel className="overflow-hidden p-0">
+                <div className="divide-y">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <Skeleton className="h-5 w-24 rounded-sm" />
+                        <Skeleton className="h-3.5 w-40" />
+                      </div>
+                      <Skeleton className="h-3.5 w-28" />
+                    </div>
+                  ))}
+                </div>
               </FramePanel>
             </Frame>
           ) : filtered.length === 0 ? (
@@ -98,7 +106,7 @@ export function ActivityPage({ items, isLoading }: ActivityPageProps) {
                   {filtered.map((entry) => (
                     <li
                       key={entry.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-muted/40"
+                      className="list-row-cv flex flex-wrap items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-muted/40"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Badge variant="outline">{entry.action}</Badge>

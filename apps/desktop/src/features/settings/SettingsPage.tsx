@@ -37,6 +37,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { toastManager } from '@/components/ui/toast';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { zitaIpc } from '@/lib/ipc';
 import { getSystemColorScheme } from '@/lib/theme';
 
@@ -73,6 +74,7 @@ export function SettingsPage({
   isSaving,
   onOpenExternal,
 }: SettingsPageProps) {
+  const isWide = useMediaQuery({ min: 1100 });
   const [systemScheme, setSystemScheme] = useState<'dark' | 'light'>(() => getSystemColorScheme());
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -133,8 +135,13 @@ export function SettingsPage({
 
       <ScrollArea className="min-h-0 flex-1">
         <PageBody className="mx-auto max-w-4xl">
-          <Tabs value={activeTab} onValueChange={(val) => onTabChange(val as SettingsTab)}>
-            <TabsList className="mb-4">
+          <Tabs
+            orientation={isWide ? 'vertical' : 'horizontal'}
+            value={activeTab}
+            onValueChange={(val) => onTabChange(val as SettingsTab)}
+            className={isWide ? 'gap-6' : 'gap-2'}
+          >
+            <TabsList className={isWide ? 'w-44 shrink-0 self-start' : 'mb-4'}>
               <TabsTab value="general">General</TabsTab>
               <TabsTab value="engine">Engine</TabsTab>
               <TabsTab value="appearance">Appearance</TabsTab>

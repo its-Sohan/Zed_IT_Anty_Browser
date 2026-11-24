@@ -354,7 +354,7 @@ export function ProfilesPage({
                 aria-hidden="true"
                 className={cn(
                   'size-2 shrink-0 rounded-full',
-                  row.original.running && 'bg-success',
+                  row.original.running && 'bg-success animate-status-pulse',
                   !row.original.running && !st?.color && 'bg-muted-foreground/50',
                 )}
                 style={!row.original.running && st?.color ? { backgroundColor: st.color } : undefined}
@@ -667,10 +667,25 @@ export function ProfilesPage({
         <PageBody className="pb-20">
           {isLoading ? (
             <Frame>
-              <FramePanel className="space-y-3 p-4">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-5 w-1/2" />
+              <FramePanel className="overflow-hidden p-0">
+                <div className="divide-y">
+                  <div className={cn('flex items-center gap-4 bg-muted/30 px-3', rowHeight)}>
+                    <Skeleton className="size-4 rounded-sm" />
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-3.5 w-24" />
+                    <Skeleton className="h-3.5 w-20" />
+                    <Skeleton className="ml-auto h-3.5 w-16" />
+                  </div>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className={cn('flex items-center gap-4 px-3', rowHeight)}>
+                      <Skeleton className="size-4 rounded-sm" />
+                      <Skeleton className="h-3.5 w-36" />
+                      <Skeleton className="h-3.5 w-28" />
+                      <Skeleton className="h-3.5 w-20" />
+                      <Skeleton className="ml-auto h-6 w-16 rounded-md" />
+                    </div>
+                  ))}
+                </div>
               </FramePanel>
             </Frame>
           ) : sortedProfiles.length === 0 ? (
@@ -787,7 +802,7 @@ export function ProfilesPage({
                       <TableRow
                         key={row.id}
                         data-state={selectedIds.has(row.original.id) ? 'selected' : undefined}
-                        className={rowHeight}
+                        className={cn(rowHeight, 'list-row-cv')}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell key={cell.id} className="px-3">
@@ -806,7 +821,7 @@ export function ProfilesPage({
 
       {/* Bulk Bar (§8.3) */}
       {selectedIds.size > 0 && (
-        <div className="absolute bottom-4 left-1/2 z-30 flex max-w-full -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-popover/95 px-2.5 py-1.5 shadow-lg backdrop-blur-xl">
+        <div className="animate-bulk-bar absolute bottom-4 left-1/2 z-30 flex max-w-full -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-popover/95 px-2.5 py-1.5 shadow-lg backdrop-blur-xl">
           <Badge variant="default" className="type-numeric mr-0.5">
             {selectedIds.size} selected
           </Badge>

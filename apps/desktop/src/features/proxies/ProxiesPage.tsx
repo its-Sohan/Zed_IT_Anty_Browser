@@ -135,11 +135,22 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
 
   const handleCheckAll = async () => {
     if (proxies.length === 0) return;
-    setCheckAllProgress({ done: 0, total: proxies.length });
-    for (let i = 0; i < proxies.length; i++) {
-      await handleTestOne(proxies[i]!.id);
-      setCheckAllProgress({ done: i + 1, total: proxies.length });
-    }
+    const total = proxies.length;
+    let done = 0;
+    let cursor = 0;
+    const concurrency = Math.min(4, total);
+    setCheckAllProgress({ done: 0, total });
+
+    const worker = async () => {
+      while (cursor < total) {
+        const current = proxies[cursor++]!;
+        await handleTestOne(current.id);
+        done += 1;
+        setCheckAllProgress({ done, total });
+      }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
     setCheckAllProgress(null);
   };
 
@@ -185,7 +196,10 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
             disabled={proxies.length === 0 || Boolean(checkAllProgress)}
             onClick={() => void handleCheckAll()}
           >
-            <RefreshCw className="size-3.5" strokeWidth={1.5} />
+            <RefreshCw
+              className={checkAllProgress ? 'size-3.5 animate-spin' : 'size-3.5'}
+              strokeWidth={1.5}
+            />
             Check all
           </Button>
           <Button size="sm" variant="secondary" onClick={() => setBulkOpen(true)}>
@@ -203,10 +217,17 @@ export function ProxiesPage({ proxies, isLoading, density, onRefresh }: ProxiesP
         <PageBody>
           {isLoading ? (
             <Frame>
-              <FramePanel className="space-y-3 p-4">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-5 w-1/2" />
+              <FramePanel className="overflow-hidden p-0">
+                <div className="divide-y">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className={`flex items-center gap-4 px-3 ${rowHeight}`}>
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3.5 w-44" />
+                      <Skeleton className="h-5 w-20 rounded-sm" />
+                      <Skeleton className="ml-auto h-6 w-14 rounded-md" />
+                    </div>
+                  ))}
+                </div>
               </FramePanel>
             </Frame>
           ) : proxies.length === 0 ? (
