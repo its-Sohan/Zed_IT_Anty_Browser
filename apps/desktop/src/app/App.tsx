@@ -1,4 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
+import { FluentProvider } from '@fluentui/react-components';
 import { keepPreviousData, QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import type { UpdateSettingsInput } from '@zita/shared';
@@ -14,6 +15,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { ProfilesPage } from '@/features/profiles/ProfilesPage';
 import type { SettingsTab } from '@/features/settings/SettingsPage';
 import { zitaIpc } from '@/lib/ipc';
+import { useFluentTheme } from '@/lib/fluent-theme';
 import { applyThemePreference } from '@/lib/theme';
 
 const ActivityPage = lazy(() =>
@@ -424,13 +426,17 @@ function Shell() {
 }
 
 export function App() {
+  const fluentTheme = useFluentTheme();
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <TooltipProvider>
-          <Shell />
-        </TooltipProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <FluentProvider theme={fluentTheme} className="h-full min-h-0 outline-none">
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <TooltipProvider>
+            <Shell />
+          </TooltipProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </FluentProvider>
   );
 }

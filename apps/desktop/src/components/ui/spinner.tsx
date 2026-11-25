@@ -1,16 +1,19 @@
-import { Loader2Icon } from "lucide-react";
+"use client";
+
+import { Spinner as FluentSpinner } from "@fluentui/react-components";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
 export function Spinner({
   className,
   ...props
-}: React.ComponentProps<typeof Loader2Icon>): React.ReactElement {
+}: React.ComponentProps<typeof FluentSpinner>): React.ReactElement {
   return (
-    <Loader2Icon
-      aria-label="Loading"
-      className={cn("animate-spin", className)}
+    <FluentSpinner
       role="status"
+      aria-label="Loading"
+      style={{ color: "inherit" }}
+      className={cn("relative inline-block shrink-0", className)}
       {...props}
     />
   );

@@ -51,7 +51,7 @@ Zed IT Anti Browser is a desktop application that creates isolated browser profi
 
 **What v1 is:**
 
-- Windows desktop app built with Electron, Vite, React, Tailwind CSS v4, and coss UI.
+- Windows desktop app built with Electron, Vite, React, Tailwind CSS v4, and Microsoft Fluent UI v9.
 - Profile manager with folders, tags, statuses, notes, search, bulk actions, copy, and CSV import.
 - Deterministic fingerprint generation built on `fingerprint-chromium` (BSD-3, Chromium 150 base).
 - Local proxy bridge supporting authenticated HTTP and SOCKS5 proxies, traffic counters, and leak-safe defaults.
@@ -64,7 +64,7 @@ Zed IT Anti Browser is a desktop application that creates isolated browser profi
 
 - Dolphin Anty charges $89/month for 100 profiles. GoLogin lists $99/month for 300 but discounts heavily. There is room for a focused 10–200 profile product with clean UX and better local support.
 - ZED IT already has the brand discipline, engineering stack, and audience to ship and support it.
-- coss UI gives the app a modern, dense interface that looks more expensive than the competition without a large design team.
+- Fluent UI gives the app a modern, dense Windows 11-style interface that looks more expensive than the competition without a large design team.
 - License-key sales remove account-system complexity from v1 and let the product launch through affiliate and proxy-provider channels quickly.
 
 **The honest risk:** the prebuilt engine does not support every Dolphin fingerprint field. Manual screen resolution, media-device counts, manual font lists, and manual GPU strings are gaps in v1. Week 0 is a validation gate: if the engine cannot produce credible fingerprints for our target sites, the roadmap shifts to an owned patch build before the UI scales.
@@ -219,7 +219,7 @@ The product lockup adds **ANTI BROWSER** after a short vertical divider. The par
 
 | Role | Typeface | Notes |
 |---|---|---|
-| UI | Inter | Loaded as a variable font; matches coss UI defaults |
+| UI | Inter | Loaded as a variable font; fallback for Segoe UI Variable |
 | Code, IDs, seeds, license keys | Geist Mono | Tabular figures; no ligatures |
 | Wordmark | Existing ZED IT heavy italic | Do not modify |
 | Product descriptor | Inter SemiBold, uppercase, 0.18em tracking | “ANTI BROWSER” |
@@ -599,9 +599,11 @@ General: storage path, language, startup behavior. Engine: installed versions, u
 
 **License expiry:** app opens read-only → banner explains grace/expiry → profiles can be exported and edited, launches blocked → activate or renew.
 
-### 8.5 coss UI mapping
 
-| Need | coss UI component |
+
+### 8.5 Component mapping
+
+| Need | component |
 |---|---|
 | App shell | Custom sidebar using coss tokens and `ScrollArea` |
 | Command palette | `Command` |
@@ -640,7 +642,7 @@ General: storage path, language, startup behavior. Engine: installed versions, u
 |---|---|---|
 | Desktop shell | Electron + Vite | Mature process management, native Windows packaging, fast iteration |
 | Renderer | React 19 + TypeScript | Team familiarity; coss UI compatibility |
-| Styling | Tailwind CSS v4 + coss UI | Dense, modern component system based on Base UI |
+| Styling | Tailwind CSS v4 + Fluent UI v9 | Dense, modern component system with Fluent 2 theming |
 | Data fetching | TanStack Query over typed IPC | Cache, retries, optimistic updates |
 | Tables | TanStack Table | Virtualization, column visibility, sorting, selection |
 | Forms | React Hook Form + Zod | Shared validation between UI and core |
@@ -667,7 +669,7 @@ General: storage path, language, startup behavior. Engine: installed versions, u
                 │ contextBridge                │ spawn
 ┌───────────────▼──────────────┐   ┌───────────▼──────────────┐
 │ Renderer (sandboxed)         │   │ Patched Chromium          │
-│ React + coss UI              │   │ per-profile user-data-dir │
+│ React + Fluent UI            │   │ per-profile user-data-dir │
 │ No Node access               │   │ local proxy + CDP port    │
 └──────────────────────────────┘   └──────────────────────────┘
 ```
@@ -690,7 +692,7 @@ zed-it-anti-browser/
 │  │  ├─ features/proxies/
 │  │  ├─ features/lab/
 │  │  ├─ features/settings/
-│  │  ├─ components/ui/        # coss UI source
+│  │  ├─ components/ui/        # components/ui source
 │  │  └─ lib/
 │  └─ package.json
 ├─ packages/core/

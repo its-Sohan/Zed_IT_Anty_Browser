@@ -1,6 +1,6 @@
 # UI Design System — Zed IT Anti Browser
 
-Rules for keeping the renderer polished. coss UI components are already well-built;
+Rules for keeping the renderer polished. The component layer is built on **Microsoft Fluent UI v9** (`@fluentui/react-components`, Fluent 2 web themes via `FluentProvider`) with Base UI retained for compound shells;
 the visual quality comes from **how they are composed**. Everything below is enforced
 by tokens in `apps/desktop/src/styles/globals.css` and the shell in
 `apps/desktop/src/components/ui/page.tsx`.
@@ -111,7 +111,7 @@ label is obvious; otherwise icon + label at `size="sm"`.
 no `min-w` hacks (the container scrolls). Sortable headers are ghost buttons
 with the same height as the body rows (40 comfortable / 32 compact) and 13px
 muted text; no uppercase. Row actions: primary action inline
-(Start/Stop/Test), everything else in a coss `Menu` (`⋯`) — never more than
+(Start/Stop/Test), everything else in a `Menu` (`⋯`) — never more than
 two controls plus the overflow button per row.
 
 **Nav rail** (profile editor): tinted rail (`bg-muted/30`), items are ghost buttons,
@@ -119,7 +119,7 @@ the active item is `bg-background font-medium shadow-xs/5`. No left border bars.
 The editor is one `ScrollArea` for nav + form + summary rail (rails stick with
 `sticky top-0`, never scroll independently).
 
-**Pickers**: two or three mutually exclusive options use coss `SegmentedControl`
+**Pickers**: two or three mutually exclusive options use `SegmentedControl`
 (`data-checked` marks the active item), not `Select` or toggle `Button`s. Longer
 lists stay `Select`. `Select` remains the default for anything with 4+ options.
 

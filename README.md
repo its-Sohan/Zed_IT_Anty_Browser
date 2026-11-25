@@ -2,7 +2,7 @@
 
 *Blend in. Scale out.*
 
-Local-first anti-detect browser manager built by **ZED IT Bangladesh** using Electron, Vite, React 19, Tailwind CSS v4, Base UI, SQLite + Drizzle, and pinned `fingerprint-chromium` (`150.0.7871.186`).
+Local-first anti-detect browser manager built by **ZED IT Bangladesh** using Electron, Vite, React 19, Tailwind CSS v4, Fluent UI (Microsoft) + Base UI, SQLite + Drizzle, and pinned `fingerprint-chromium` (`150.0.7871.186`).
 
 ## Monorepo Layout
 
