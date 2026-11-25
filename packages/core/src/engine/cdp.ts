@@ -44,12 +44,15 @@ export function normalizeLoopbackWsUrl(wsUrl: string): string {
 /**
  * Lists active CDP targets on the given loopback port.
  */
-export async function listCdpTargets(port: number): Promise<CdpTarget[]> {
+export async function listCdpTargets(port: number, timeoutMs = 5_000): Promise<CdpTarget[]> {
   const endpoints = ['/json/list', '/json'];
-  let lastStatus: string = 'no attempts made';
+  let lastStatus = 'no attempts made';
   for (const endpoint of endpoints) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}${endpoint}`);
+      const res = await fetch(`http://127.0.0.1:${port}${endpoint}`, {
+        headers: { Connection: 'close' },
+        signal: AbortSignal.timeout(Math.max(500, timeoutMs)),
+      });
       if (res.ok) {
         return (await res.json()) as CdpTarget[];
       }
@@ -95,12 +98,17 @@ export async function waitForDevToolsActivePort(
 
 /**
  * Lightweight Chrome DevTools Protocol WebSocket client using built-in WHATWG WebSocket.
+ * Supports both root-level commands and flattened target sessions (`sessionId`).
  */
 export class CdpClient {
   private ws: WebSocket | null = null;
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
   private eventListeners = new Map<string, Set<(params: Record<string, unknown>) => void>>();
+  private sessionEventListeners = new Map<
+    string,
+    Map<string, Set<(params: Record<string, unknown>) => void>>
+  >();
   private closeListeners = new Set<() => void>();
 
   async connect(rawWsUrl: string, timeoutMs = 10_000): Promise<void> {
@@ -128,11 +136,15 @@ export class CdpClient {
         resolve();
       });
 
-      ws.addEventListener('error', () => {
+      ws.addEventListener('error', (event) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        reject(new Error(`Failed to connect to CDP WebSocket: ${wsUrl}`));
+        const detail =
+          'message' in event && typeof event.message === 'string' && event.message
+            ? ` (${event.message})`
+            : '';
+        reject(new Error(`Failed to connect to CDP WebSocket: ${wsUrl}${detail}`));
       });
 
       ws.addEventListener('message', (event) => {
@@ -140,7 +152,20 @@ export class CdpClient {
         this.handleMessage(raw);
       });
 
-      ws.addEventListener('close', () => {
+      ws.addEventListener('close', (event) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(
+            new Error(
+              `CDP WebSocket closed before open (code=${event.code}${event.reason ? `, reason=${event.reason}` : ''}): ${wsUrl}`,
+            ),
+          );
+          return;
+        }
+        if (this.ws === ws) {
+          this.ws = null;
+        }
         for (const req of this.pending.values()) {
           clearTimeout(req.timer);
           req.reject(new Error('CDP WebSocket closed before response'));
@@ -169,7 +194,11 @@ export class CdpClient {
    * Prefers the authoritative WS path from `DevToolsActivePort` when provided; recent
    * Windows Chromium builds sometimes report HTTP 404 for `/json/*` discovery endpoints.
    */
-  async connectToBrowser(port: number, timeoutMs = 10_000, options: { wsPath?: string | null } = {}): Promise<void> {
+  async connectToBrowser(
+    port: number,
+    timeoutMs = 10_000,
+    options: { wsPath?: string | null } = {},
+  ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     let lastError: unknown = null;
 
@@ -183,7 +212,11 @@ export class CdpClient {
         }
       }
       try {
-        const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+        const remaining = Math.max(500, deadline - Date.now());
+        const res = await fetch(`http://127.0.0.1:${port}/json/version`, {
+          headers: { Connection: 'close' },
+          signal: AbortSignal.timeout(Math.min(remaining, 3_000)),
+        });
         if (res.ok) {
           const info = (await res.json()) as { webSocketDebuggerUrl?: string };
           if (info.webSocketDebuggerUrl) {
@@ -215,10 +248,11 @@ export class CdpClient {
 
     while (Date.now() < deadline) {
       try {
-        const targets = await listCdpTargets(port);
+        const remaining = Math.max(500, deadline - Date.now());
+        const targets = await listCdpTargets(port, Math.min(remaining, 3_000));
         const pageTarget = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
         if (pageTarget?.webSocketDebuggerUrl) {
-          await this.connect(pageTarget.webSocketDebuggerUrl, timeoutMs);
+          await this.connect(pageTarget.webSocketDebuggerUrl, Math.max(1_000, deadline - Date.now()));
           return pageTarget;
         }
       } catch (err) {
@@ -241,6 +275,7 @@ export class CdpClient {
       error?: { code?: number; message?: string };
       method?: string;
       params?: Record<string, unknown>;
+      sessionId?: string;
     };
     try {
       parsed = JSON.parse(raw) as typeof parsed;
@@ -264,6 +299,15 @@ export class CdpClient {
     }
 
     if (parsed.method) {
+      if (parsed.sessionId) {
+        const byMethod = this.sessionEventListeners.get(parsed.sessionId);
+        const sessionListeners = byMethod?.get(parsed.method);
+        if (sessionListeners) {
+          for (const cb of sessionListeners) {
+            cb(parsed.params ?? {});
+          }
+        }
+      }
       const listeners = this.eventListeners.get(parsed.method);
       if (listeners) {
         for (const cb of listeners) {
@@ -285,10 +329,38 @@ export class CdpClient {
     };
   }
 
+  onSession(
+    sessionId: string,
+    event: string,
+    listener: (params: Record<string, unknown>) => void,
+  ): () => void {
+    let byMethod = this.sessionEventListeners.get(sessionId);
+    if (!byMethod) {
+      byMethod = new Map();
+      this.sessionEventListeners.set(sessionId, byMethod);
+    }
+    let set = byMethod.get(event);
+    if (!set) {
+      set = new Set();
+      byMethod.set(event, set);
+    }
+    set.add(listener);
+    return () => {
+      set?.delete(listener);
+      if (set && set.size === 0) {
+        byMethod?.delete(event);
+      }
+      if (byMethod && byMethod.size === 0) {
+        this.sessionEventListeners.delete(sessionId);
+      }
+    };
+  }
+
   send<T = Record<string, unknown>>(
     method: string,
     params: Record<string, unknown> = {},
     timeoutMs = 15_000,
+    sessionId?: string,
   ): Promise<T> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error(`CDP socket is not open (method=${method})`));
@@ -307,7 +379,11 @@ export class CdpClient {
       });
 
       try {
-        this.ws!.send(JSON.stringify({ id, method, params }));
+        const payload: Record<string, unknown> = { id, method, params };
+        if (sessionId) {
+          payload.sessionId = sessionId;
+        }
+        this.ws!.send(JSON.stringify(payload));
       } catch (err) {
         clearTimeout(timer);
         this.pending.delete(id);
@@ -351,7 +427,11 @@ export class CdpClient {
     }
   }
 
-  async evaluate<T = unknown>(expression: string, timeoutMs = 15_000): Promise<T> {
+  async evaluate<T = unknown>(
+    expression: string,
+    timeoutMs = 15_000,
+    opts?: { sessionId?: string; awaitPromise?: boolean },
+  ): Promise<T> {
     const res = await this.send<{
       result?: { type: string; value?: T; description?: string };
       exceptionDetails?: { text?: string; exception?: { description?: string } };
@@ -359,10 +439,11 @@ export class CdpClient {
       'Runtime.evaluate',
       {
         expression,
-        awaitPromise: true,
+        awaitPromise: opts?.awaitPromise ?? true,
         returnByValue: true,
       },
       timeoutMs,
+      opts?.sessionId,
     );
 
     if (res.exceptionDetails) {
@@ -385,6 +466,11 @@ export class CdpClient {
   }
 
   disconnect(): void {
+    for (const req of this.pending.values()) {
+      clearTimeout(req.timer);
+      req.reject(new Error('CDP client disconnected'));
+    }
+    this.pending.clear();
     if (this.ws) {
       try {
         this.ws.close();
@@ -394,6 +480,7 @@ export class CdpClient {
       this.ws = null;
     }
     this.eventListeners.clear();
+    this.sessionEventListeners.clear();
     this.closeListeners.clear();
   }
 }

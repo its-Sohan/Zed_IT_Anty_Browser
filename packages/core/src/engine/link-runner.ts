@@ -4,7 +4,7 @@ import {
   type LinkRunState,
   type StartLinkRunInput,
 } from '@zita/shared';
-import { CdpClient, listCdpTargets } from './cdp.js';
+import { CdpClient } from './cdp.js';
 
 export type LinkTabOutcome =
   | { outcome: 'loaded' }
@@ -57,36 +57,11 @@ function sleepAbortable(ms: number, signal: AbortSignal): Promise<boolean> {
   });
 }
 
-async function waitForTargetWsUrl(
-  port: number,
-  targetId: string,
-  timeoutMs: number,
-  signal: AbortSignal,
-): Promise<string> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (signal.aborted) {
-      throw new Error('Link run aborted');
-    }
-    try {
-      const targets = await listCdpTargets(port);
-      const match = targets.find((t) => t.id === targetId && t.webSocketDebuggerUrl);
-      if (match?.webSocketDebuggerUrl) {
-        return match.webSocketDebuggerUrl;
-      }
-    } catch {
-      // Target list may briefly lag right after Target.createTarget
-    }
-    await sleepAbortable(60, signal);
-  }
-  throw new Error(`Timed out waiting for CDP target ${targetId} on 127.0.0.1:${port}`);
-}
-
 /**
- * Default CDP-backed tab driver that opens isolated tabs, monitors load/crash/stutter signals,
- * and closes each tab cleanly without closing the browser window. Reuses one browser-level
- * CDP connection per port across tabs to avoid loopback socket churn, which degrades
- * on Windows (ephemeral-port exhaustion, per-connection AV scanning).
+ * Default CDP-backed tab driver that opens isolated tabs via flattened CDP sessions
+ * (`Target.attachToTarget({ targetId, flatten: true })`) over a single reused browser
+ * WebSocket connection per port. This avoids per-tab `/json/list` HTTP polling and
+ * loopback socket churn that degrade on Windows.
  */
 export class CdpLinkTabDriver implements LinkTabDriver {
   private readonly browserClients = new Map<number, CdpClient>();
@@ -110,59 +85,80 @@ export class CdpLinkTabDriver implements LinkTabDriver {
   }
 
   async openTab(endpoint: CdpEndpoint, signal: AbortSignal): Promise<LinkTabSession> {
+    if (signal.aborted) {
+      throw new Error('Link run aborted');
+    }
+
     const browserCdp = await this.getBrowserClient(endpoint);
     const cdpPort = endpoint.cdpPort;
 
     let targetId: string | null = null;
-    const pageCdp = new CdpClient();
+    let sessionId: string | null = null;
 
     try {
       const created = await browserCdp.send<{ targetId: string }>(
         'Target.createTarget',
         { url: 'about:blank' },
-        8_000,
+        15_000,
       );
       targetId = created.targetId;
 
-      const wsUrl = await waitForTargetWsUrl(cdpPort, targetId, 8_000, signal);
-      await pageCdp.connect(wsUrl, 8_000);
-      await pageCdp.send('Page.enable', {}, 5_000);
-      await pageCdp.send('Inspector.enable', {}, 5_000).catch(() => {
+      if (signal.aborted) {
+        throw new Error('Link run aborted');
+      }
+
+      const attached = await browserCdp.send<{ sessionId: string }>(
+        'Target.attachToTarget',
+        { targetId, flatten: true },
+        15_000,
+      );
+      sessionId = attached.sessionId;
+
+      await browserCdp.send('Page.enable', {}, 15_000, sessionId);
+      await browserCdp.send('Inspector.enable', {}, 5_000, sessionId).catch(() => {
         // Some Chromium builds emit Inspector.targetCrashed even if Inspector.enable is a no-op
       });
     } catch (err) {
-      pageCdp.disconnect();
       if (targetId) {
-        await this.safeCloseTarget(browserCdp, cdpPort, targetId);
+        await this.safeCloseTarget(browserCdp, cdpPort, targetId, sessionId);
       }
       throw err;
     }
 
+    const activeTargetId = targetId;
+    const activeSessionId = sessionId;
     let closed = false;
     const safeClose = async () => {
       if (closed) return;
       closed = true;
-      pageCdp.disconnect();
-      if (targetId) {
-        await this.safeCloseTarget(browserCdp, cdpPort, targetId);
-      }
-      browserCdp.disconnect();
+      await this.safeCloseTarget(browserCdp, cdpPort, activeTargetId, activeSessionId);
     };
 
     return {
-      navigateAndMonitor: (url, options) => this.monitorTab(pageCdp, url, options),
+      navigateAndMonitor: (url, options) =>
+        this.monitorTab(browserCdp, activeTargetId, activeSessionId, url, options),
       close: safeClose,
     };
   }
 
-  private async safeCloseTarget(browserCdp: CdpClient | null, cdpPort: number, targetId: string): Promise<void> {
+  private async safeCloseTarget(
+    browserCdp: CdpClient | null,
+    cdpPort: number,
+    targetId: string,
+    sessionId: string | null,
+  ): Promise<void> {
     if (browserCdp && !browserCdp.isOpen()) {
       browserCdp = null;
     }
     if (browserCdp) {
       try {
-        const targets = await listCdpTargets(cdpPort).catch(() => []);
-        const pageTargets = targets.filter((t) => t.type === 'page');
+        if (sessionId) {
+          await browserCdp.send('Target.detachFromTarget', { sessionId }, 3_000).catch(() => undefined);
+        }
+        const res = await browserCdp
+          .send<{ targetInfos?: Array<{ type: string; targetId: string }> }>('Target.getTargets', {}, 3_000)
+          .catch(() => ({ targetInfos: [] }));
+        const pageTargets = (res.targetInfos ?? []).filter((t) => t.type === 'page');
         // Never close the last remaining tab in the window or Chromium will exit the profile.
         if (pageTargets.length <= 1) {
           await browserCdp.send('Target.createTarget', { url: 'about:blank' }, 3_000).catch(() => undefined);
@@ -174,14 +170,19 @@ export class CdpLinkTabDriver implements LinkTabDriver {
       }
     }
     try {
-      await fetch(`http://127.0.0.1:${cdpPort}/json/close/${encodeURIComponent(targetId)}`);
+      await fetch(`http://127.0.0.1:${cdpPort}/json/close/${encodeURIComponent(targetId)}`, {
+        headers: { Connection: 'close' },
+        signal: AbortSignal.timeout(3_000),
+      });
     } catch {
       // Target or browser may already be closed
     }
   }
 
   private monitorTab(
-    pageCdp: CdpClient,
+    browserCdp: CdpClient,
+    targetId: string,
+    sessionId: string,
     url: string,
     options: LinkTabMonitorOptions,
   ): Promise<LinkTabOutcome> {
@@ -218,20 +219,36 @@ export class CdpLinkTabDriver implements LinkTabDriver {
       cleanups.push(() => options.signal.removeEventListener('abort', onAbort));
 
       cleanups.push(
-        pageCdp.on('Inspector.targetCrashed', () => {
+        browserCdp.onSession(sessionId, 'Inspector.targetCrashed', () => {
           finish({ outcome: 'crashed', reason: 'Tab crashed ("Aw, Snap!")' });
         }),
       );
 
       cleanups.push(
-        pageCdp.on('Page.loadEventFired', () => {
+        browserCdp.onSession(sessionId, 'Page.loadEventFired', () => {
           finish({ outcome: 'loaded' });
         }),
       );
 
       cleanups.push(
-        pageCdp.onClose(() => {
-          finish({ outcome: 'crashed', reason: 'Tab closed or renderer disconnected unexpectedly' });
+        browserCdp.on('Target.detachedFromTarget', (params) => {
+          if (params.sessionId === sessionId || params.targetId === targetId) {
+            finish({ outcome: 'crashed', reason: 'Tab closed or renderer disconnected unexpectedly' });
+          }
+        }),
+      );
+
+      cleanups.push(
+        browserCdp.on('Target.targetDestroyed', (params) => {
+          if (params.targetId === targetId) {
+            finish({ outcome: 'crashed', reason: 'Tab closed or renderer disconnected unexpectedly' });
+          }
+        }),
+      );
+
+      cleanups.push(
+        browserCdp.onClose(() => {
+          finish({ outcome: 'crashed', reason: 'Browser CDP connection closed unexpectedly' });
         }),
       );
 
@@ -248,10 +265,11 @@ export class CdpLinkTabDriver implements LinkTabDriver {
         heartbeatTimer = setInterval(() => {
           if (settled || heartbeatInFlight) return;
           heartbeatInFlight = true;
-          pageCdp
+          browserCdp
             .evaluate<{ readyState: string; href: string }>(
               '({ readyState: document.readyState, href: location.href })',
               options.hangTimeoutMs,
+              { sessionId, awaitPromise: false },
             )
             .then((info) => {
               heartbeatInFlight = false;
@@ -275,8 +293,13 @@ export class CdpLinkTabDriver implements LinkTabDriver {
         }, heartbeatIntervalMs);
       };
 
-      pageCdp
-        .send<{ frameId: string; errorText?: string }>('Page.navigate', { url }, options.loadTimeoutMs)
+      browserCdp
+        .send<{ frameId: string; errorText?: string }>(
+          'Page.navigate',
+          { url },
+          options.loadTimeoutMs,
+          sessionId,
+        )
         .then((navRes) => {
           if (settled) return;
           if (navRes.errorText) {
@@ -290,8 +313,8 @@ export class CdpLinkTabDriver implements LinkTabDriver {
           const message = err instanceof Error ? err.message : 'Navigation failed';
           if (message.includes('timed out')) {
             finish({
-              outcome: 'stuttered',
-              reason: `Navigation stalled or renderer froze (${message})`,
+              outcome: 'timeout',
+              reason: `Did not finish loading within ${Math.round(options.loadTimeoutMs / 1000)}s`,
             });
           } else {
             finish({ outcome: 'error', reason: message });
@@ -428,8 +451,6 @@ export class LinkRunnerService {
             this.publish(state);
             return;
           }
-
-          const cdpPort = endpoint.cdpPort;
 
           const item = state.items[i]!;
           state.currentIndex = i;

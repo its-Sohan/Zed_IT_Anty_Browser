@@ -1,11 +1,39 @@
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { LinkRunState } from '@zita/shared';
+import { listCdpTargets, waitForDevToolsActivePort } from './cdp.js';
 import {
   LinkRunnerService,
   type LinkTabDriver,
   type LinkTabOutcome,
   type LinkTabSession,
 } from './link-runner.js';
+
+function resolveLocalEngineExecutable(): string | null {
+  const platformKey = process.platform === 'win32' ? 'win-x64' : 'linux-x64';
+  const candidates = [
+    path.resolve(process.cwd(), 'resources', 'engines', '150.0.7871.186', platformKey),
+    path.resolve(__dirname, '..', '..', '..', '..', 'resources', 'engines', '150.0.7871.186', platformKey),
+  ];
+  for (const root of candidates) {
+    const markerPath = path.join(root, '.zita-engine.json');
+    if (!existsSync(markerPath)) continue;
+    try {
+      const marker = JSON.parse(readFileSync(markerPath, 'utf8')) as { executable?: string };
+      if (marker.executable) {
+        const resolved = path.resolve(root, marker.executable);
+        if (existsSync(resolved)) return resolved;
+      }
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
 
 function waitForRunDone(service: LinkRunnerService, profileId: string, timeoutMs = 2_000): Promise<LinkRunState> {
   return new Promise((resolve, reject) => {
@@ -149,4 +177,75 @@ describe('LinkRunnerService', () => {
       }),
     ).rejects.toThrow(/not running/i);
   });
+
+  const engineExe = resolveLocalEngineExecutable();
+
+  it.skipIf(!engineExe)(
+    'runs links end-to-end against real Chromium via flattened CDP sessions and handles load + timeout',
+    async () => {
+      const server = http.createServer((req, res) => {
+        if (req.url === '/slow') {
+          // Intentionally never finish so loadTimeoutMs triggers
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.write('<html><body>loading...');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`<html><body><h1>Page ${req.url}</h1></body></html>`);
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const httpPort = (server.address() as { port: number }).port;
+
+      const userDataDir = mkdtempSync(path.join(os.tmpdir(), 'zita-link-runner-e2e-'));
+      const child = spawn(
+        engineExe!,
+        [
+          `--user-data-dir=${userDataDir}`,
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--remote-debugging-port=0',
+          '--remote-debugging-address=127.0.0.1',
+          '--headless=new',
+          '--mute-audio',
+          ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
+          'about:blank',
+        ],
+        { stdio: ['ignore', 'ignore', 'pipe'] },
+      );
+
+      try {
+        const portInfo = await waitForDevToolsActivePort(userDataDir, 15_000);
+
+        const service = new LinkRunnerService({
+          getCdpInfo: () => ({ cdpPort: portInfo.port, cdpWsPath: portInfo.wsPath }),
+        });
+
+        await service.start({
+          profileId: 'prof_e2e',
+          urls: [
+            `http://127.0.0.1:${httpPort}/ok-1`,
+            `http://127.0.0.1:${httpPort}/slow`,
+            `http://127.0.0.1:${httpPort}/ok-2`,
+          ],
+          loadTimeoutMs: 3_000,
+          hangTimeoutMs: 2_000,
+          dwellAfterLoadMs: 0,
+        });
+
+        const finalState = await waitForRunDone(service, 'prof_e2e', 25_000);
+        expect(finalState.status).toBe('completed');
+        expect(finalState.items.map((i) => i.status)).toEqual(['loaded', 'timeout', 'loaded']);
+
+        // Browser should still be alive with its initial blank tab intact
+        const remainingPages = (await listCdpTargets(portInfo.port)).filter((t) => t.type === 'page');
+        expect(remainingPages.length).toBeGreaterThanOrEqual(1);
+      } finally {
+        child.kill(process.platform === 'win32' ? undefined : 'SIGKILL');
+        server.closeAllConnections?.();
+        server.close();
+        rmSync(userDataDir, { recursive: true, force: true });
+      }
+    },
+    35_000,
+  );
 });
