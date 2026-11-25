@@ -25,12 +25,18 @@ export interface LinkTabSession {
   close(): Promise<void>;
 }
 
+export interface CdpEndpoint {
+  cdpPort: number;
+  cdpWsPath: string | null;
+}
+
 export interface LinkTabDriver {
-  openTab(cdpPort: number, signal: AbortSignal): Promise<LinkTabSession>;
+  openTab(endpoint: CdpEndpoint, signal: AbortSignal): Promise<LinkTabSession>;
+  releaseBrowser?(cdpPort: number): void;
 }
 
 export interface LinkRunnerServiceDeps {
-  getCdpPort: (profileId: string) => number | null;
+  getCdpInfo: (profileId: string) => CdpEndpoint | null;
   onStateChange?: (state: LinkRunState) => void;
   driver?: LinkTabDriver;
 }
@@ -78,12 +84,34 @@ async function waitForTargetWsUrl(
 
 /**
  * Default CDP-backed tab driver that opens isolated tabs, monitors load/crash/stutter signals,
- * and closes each tab cleanly without closing the browser window.
+ * and closes each tab cleanly without closing the browser window. Reuses one browser-level
+ * CDP connection per port across tabs to avoid loopback socket churn, which degrades
+ * on Windows (ephemeral-port exhaustion, per-connection AV scanning).
  */
 export class CdpLinkTabDriver implements LinkTabDriver {
-  async openTab(cdpPort: number, signal: AbortSignal): Promise<LinkTabSession> {
-    const browserCdp = new CdpClient();
-    await browserCdp.connectToBrowser(cdpPort, 8_000);
+  private readonly browserClients = new Map<number, CdpClient>();
+
+  private async getBrowserClient(endpoint: CdpEndpoint): Promise<CdpClient> {
+    const cached = this.browserClients.get(endpoint.cdpPort);
+    if (cached?.isOpen()) return cached;
+    cached?.disconnect();
+    const client = new CdpClient();
+    await client.connectToBrowser(endpoint.cdpPort, 15_000, { wsPath: endpoint.cdpWsPath });
+    this.browserClients.set(endpoint.cdpPort, client);
+    return client;
+  }
+
+  releaseBrowser(cdpPort: number): void {
+    const client = this.browserClients.get(cdpPort);
+    if (client) {
+      client.disconnect();
+      this.browserClients.delete(cdpPort);
+    }
+  }
+
+  async openTab(endpoint: CdpEndpoint, signal: AbortSignal): Promise<LinkTabSession> {
+    const browserCdp = await this.getBrowserClient(endpoint);
+    const cdpPort = endpoint.cdpPort;
 
     let targetId: string | null = null;
     const pageCdp = new CdpClient();
@@ -107,7 +135,6 @@ export class CdpLinkTabDriver implements LinkTabDriver {
       if (targetId) {
         await this.safeCloseTarget(browserCdp, cdpPort, targetId);
       }
-      browserCdp.disconnect();
       throw err;
     }
 
@@ -128,21 +155,28 @@ export class CdpLinkTabDriver implements LinkTabDriver {
     };
   }
 
-  private async safeCloseTarget(browserCdp: CdpClient, cdpPort: number, targetId: string): Promise<void> {
-    try {
-      const targets = await listCdpTargets(cdpPort).catch(() => []);
-      const pageTargets = targets.filter((t) => t.type === 'page');
-      // Never close the last remaining tab in the window or Chromium will exit the profile.
-      if (pageTargets.length <= 1) {
-        await browserCdp.send('Target.createTarget', { url: 'about:blank' }, 3_000).catch(() => undefined);
-      }
-      await browserCdp.send('Target.closeTarget', { targetId }, 4_000);
-    } catch {
+  private async safeCloseTarget(browserCdp: CdpClient | null, cdpPort: number, targetId: string): Promise<void> {
+    if (browserCdp && !browserCdp.isOpen()) {
+      browserCdp = null;
+    }
+    if (browserCdp) {
       try {
-        await fetch(`http://127.0.0.1:${cdpPort}/json/close/${encodeURIComponent(targetId)}`);
+        const targets = await listCdpTargets(cdpPort).catch(() => []);
+        const pageTargets = targets.filter((t) => t.type === 'page');
+        // Never close the last remaining tab in the window or Chromium will exit the profile.
+        if (pageTargets.length <= 1) {
+          await browserCdp.send('Target.createTarget', { url: 'about:blank' }, 3_000).catch(() => undefined);
+        }
+        await browserCdp.send('Target.closeTarget', { targetId }, 4_000);
+        return;
       } catch {
-        // Target or browser may already be closed
+        // Fall through to the HTTP endpoint fallback below.
       }
+    }
+    try {
+      await fetch(`http://127.0.0.1:${cdpPort}/json/close/${encodeURIComponent(targetId)}`);
+    } catch {
+      // Target or browser may already be closed
     }
   }
 
@@ -242,7 +276,7 @@ export class CdpLinkTabDriver implements LinkTabDriver {
       };
 
       pageCdp
-        .send<{ frameId: string; errorText?: string }>('Page.navigate', { url }, Math.min(options.loadTimeoutMs, 15_000))
+        .send<{ frameId: string; errorText?: string }>('Page.navigate', { url }, options.loadTimeoutMs)
         .then((navRes) => {
           if (settled) return;
           if (navRes.errorText) {
@@ -320,8 +354,8 @@ export class LinkRunnerService {
   async start(rawInput: Partial<Omit<StartLinkRunInput, 'profileId' | 'urls'>> & Pick<StartLinkRunInput, 'profileId' | 'urls'>): Promise<LinkRunState> {
     const input = StartLinkRunInputSchema.parse(rawInput);
 
-    const cdpPort = this.deps.getCdpPort(input.profileId);
-    if (!cdpPort) {
+    const cdpInfo = this.deps.getCdpInfo(input.profileId);
+    if (!cdpInfo) {
       throw new Error('Profile browser is not running. Start the profile first before running links.');
     }
 
@@ -380,19 +414,22 @@ export class LinkRunnerService {
   }
 
   private async runLoop(state: LinkRunState, signal: AbortSignal): Promise<void> {
+    let endpoint: CdpEndpoint | null = null;
     try {
       while (!signal.aborted) {
         for (let i = 0; i < state.items.length; i++) {
           if (signal.aborted) break;
 
-          const cdpPort = this.deps.getCdpPort(state.profileId);
-          if (!cdpPort) {
+          endpoint = this.deps.getCdpInfo(state.profileId);
+          if (!endpoint) {
             state.status = 'stopped';
             state.error = 'Browser profile stopped while link runner was active';
             state.finishedAt = new Date().toISOString();
             this.publish(state);
             return;
           }
+
+          const cdpPort = endpoint.cdpPort;
 
           const item = state.items[i]!;
           state.currentIndex = i;
@@ -405,7 +442,7 @@ export class LinkRunnerService {
           let session: LinkTabSession | null = null;
 
           try {
-            session = await this.driver.openTab(cdpPort, signal);
+            session = await this.driver.openTab(endpoint, signal);
             const result = await session.navigateAndMonitor(item.url, {
               loadTimeoutMs: state.config.loadTimeoutMs,
               hangTimeoutMs: state.config.hangTimeoutMs,
@@ -487,6 +524,10 @@ export class LinkRunnerService {
       state.error = err instanceof Error ? err.message : 'Link runner failed';
       state.finishedAt = new Date().toISOString();
       this.publish(state);
+    } finally {
+      if (endpoint) {
+        this.driver.releaseBrowser?.(endpoint.cdpPort);
+      }
     }
   }
 }

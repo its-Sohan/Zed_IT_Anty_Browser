@@ -34,10 +34,16 @@ interface RunningHandle {
   child: ChildProcess;
   bridge: ProxyBridge | null;
   cdpPort: number;
+  cdpWsPath: string | null;
   proxyId: string | null;
   userDataDir: string;
   state: ProfileLifecycleState;
   startedAt: string;
+}
+
+export interface CdpEndpointInfo {
+  cdpPort: number;
+  cdpWsPath: string | null;
 }
 
 export class ProxyCheckFailedError extends Error {
@@ -119,6 +125,17 @@ export class ProfileLauncher {
     return this.running.get(profileId)?.cdpPort ?? null;
   }
 
+  /**
+   * Returns the loopback CDP endpoint for a running profile, including the authoritative
+   * WebSocket path from the engine's DevToolsActivePort file. HTTP discovery endpoints
+   * (`/json/*`) are unreliable on recent Windows Chromium builds.
+   */
+  getCdpInfo(profileId: string): CdpEndpointInfo | null {
+    const handle = this.running.get(profileId);
+    if (!handle) return null;
+    return { cdpPort: handle.cdpPort, cdpWsPath: handle.cdpWsPath };
+  }
+
   private emit(profileId: string, state: ProfileLifecycleState, error?: string): void {
     this.deps.onStatusChange?.({ profileId, state, error });
   }
@@ -155,8 +172,10 @@ export class ProfileLauncher {
     proxyServer: string | undefined,
     extraFlags: string[],
     startPages: string[],
-  ): Promise<{ child: ChildProcess; cdpPort: number }> {
-    const attemptSpawn = async (useNoSandbox: boolean): Promise<{ child: ChildProcess; cdpPort: number }> => {
+  ): Promise<{ child: ChildProcess; cdpPort: number; cdpWsPath: string | null }> {
+    const attemptSpawn = async (
+      useNoSandbox: boolean,
+    ): Promise<{ child: ChildProcess; cdpPort: number; cdpWsPath: string | null }> => {
       const mergedExtra = useNoSandbox && !extraFlags.includes('--no-sandbox')
         ? [...extraFlags, '--no-sandbox']
         : extraFlags;
@@ -206,7 +225,7 @@ export class ProfileLauncher {
             );
           }),
         ]);
-        return { child, cdpPort: portInfo.port };
+        return { child, cdpPort: portInfo.port, cdpWsPath: portInfo.wsPath };
       } catch (err) {
         killChild(child, true);
         await exitPromise.catch(() => null);
@@ -305,7 +324,7 @@ export class ProfileLauncher {
         extraFlags.push('--proxy-bypass-list=<-loopback>');
       }
 
-      const { child, cdpPort } = await this.spawnEngineWithFallback(
+      const { child, cdpPort, cdpWsPath } = await this.spawnEngineWithFallback(
         executablePath,
         resolvedFp,
         detail.userDataDir,
@@ -385,6 +404,7 @@ export class ProfileLauncher {
         child,
         bridge,
         cdpPort,
+        cdpWsPath,
         proxyId: bridgePort !== null ? detail.proxyId : null,
         userDataDir: detail.userDataDir,
         state: 'running',
