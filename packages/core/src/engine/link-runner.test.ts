@@ -56,7 +56,7 @@ describe('LinkRunnerService', () => {
 
     const transitions: LinkRunState[] = [];
     const service = new LinkRunnerService({
-      getCdpPort: (id) => (id === 'prof_1' ? 9222 : null),
+      getCdpInfo: (id) => (id === 'prof_1' ? { cdpPort: 9222, cdpWsPath: null } : null),
       onStateChange: (s) => transitions.push(s),
       driver,
     });
@@ -119,7 +119,7 @@ describe('LinkRunnerService', () => {
     };
 
     const service = new LinkRunnerService({
-      getCdpPort: () => 9222,
+      getCdpInfo: () => ({ cdpPort: 9222, cdpWsPath: null }),
       driver,
     });
 
@@ -139,7 +139,7 @@ describe('LinkRunnerService', () => {
 
   it('rejects starting a run when the profile browser is not running', async () => {
     const service = new LinkRunnerService({
-      getCdpPort: () => null,
+      getCdpInfo: () => null,
     });
 
     await expect(

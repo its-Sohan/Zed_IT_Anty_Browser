@@ -24,14 +24,41 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Rewrites a CDP WebSocket URL to the IPv4 loopback host so it always matches the address
+ * the DevTools server binds to. Some Chromium builds report `localhost` or the machine
+ * hostname, which on Windows can resolve to `::1` first and fail to connect.
+ */
+export function normalizeLoopbackWsUrl(wsUrl: string): string {
+  try {
+    const parsed = new URL(wsUrl);
+    if ((parsed.protocol === 'ws:' || parsed.protocol === 'wss:') && parsed.hostname !== '127.0.0.1') {
+      parsed.hostname = '127.0.0.1';
+      return parsed.toString();
+    }
+  } catch {
+    // Not a parseable URL; hand it back untouched.
+  }
+  return wsUrl;
+}
+
+/**
  * Lists active CDP targets on the given loopback port.
  */
 export async function listCdpTargets(port: number): Promise<CdpTarget[]> {
-  const res = await fetch(`http://127.0.0.1:${port}/json/list`);
-  if (!res.ok) {
-    throw new Error(`Failed to list CDP targets on 127.0.0.1:${port} (HTTP ${res.status})`);
+  const endpoints = ['/json/list', '/json'];
+  let lastStatus: string = 'no attempts made';
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}${endpoint}`);
+      if (res.ok) {
+        return (await res.json()) as CdpTarget[];
+      }
+      lastStatus = `HTTP ${res.status} from ${endpoint}`;
+    } catch (err) {
+      lastStatus = `${endpoint}: ${err instanceof Error ? err.message : String(err)}`;
+    }
   }
-  return (await res.json()) as CdpTarget[];
+  throw new Error(`Failed to list CDP targets on 127.0.0.1:${port} (${lastStatus})`);
 }
 
 /**
@@ -76,7 +103,8 @@ export class CdpClient {
   private eventListeners = new Map<string, Set<(params: Record<string, unknown>) => void>>();
   private closeListeners = new Set<() => void>();
 
-  async connect(wsUrl: string, timeoutMs = 10_000): Promise<void> {
+  async connect(rawWsUrl: string, timeoutMs = 10_000): Promise<void> {
+    const wsUrl = normalizeLoopbackWsUrl(rawWsUrl);
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(wsUrl);
       let settled = false;
@@ -132,14 +160,28 @@ export class CdpClient {
     };
   }
 
+  isOpen(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
   /**
-   * Connects to the browser-level CDP WebSocket endpoint (`/json/version`) on the given loopback port.
+   * Connects to the browser-level CDP WebSocket endpoint on the given loopback port.
+   * Prefers the authoritative WS path from `DevToolsActivePort` when provided; recent
+   * Windows Chromium builds sometimes report HTTP 404 for `/json/*` discovery endpoints.
    */
-  async connectToBrowser(port: number, timeoutMs = 10_000): Promise<void> {
+  async connectToBrowser(port: number, timeoutMs = 10_000, options: { wsPath?: string | null } = {}): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     let lastError: unknown = null;
 
     while (Date.now() < deadline) {
+      if (options.wsPath) {
+        try {
+          await this.connect(`ws://127.0.0.1:${port}${options.wsPath}`, timeoutMs);
+          return;
+        } catch (err) {
+          lastError = err;
+        }
+      }
       try {
         const res = await fetch(`http://127.0.0.1:${port}/json/version`);
         if (res.ok) {
@@ -148,6 +190,8 @@ export class CdpClient {
             await this.connect(info.webSocketDebuggerUrl, timeoutMs);
             return;
           }
+        } else {
+          lastError = new Error(`HTTP ${res.status} from /json/version`);
         }
       } catch (err) {
         lastError = err;

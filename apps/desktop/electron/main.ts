@@ -283,7 +283,7 @@ app.whenReady().then(() => {
   });
 
   linkRunner = new LinkRunnerService({
-    getCdpPort: (profileId) => launcher?.getCdpPort(profileId) ?? null,
+    getCdpInfo: (profileId) => launcher?.getCdpInfo(profileId) ?? null,
     onStateChange: (state) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send(IPC_CHANNELS.EVENT_LINK_RUNNER_UPDATED, state);
