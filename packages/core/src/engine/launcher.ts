@@ -324,20 +324,26 @@ export class ProfileLauncher {
         extraFlags.push('--proxy-bypass-list=<-loopback>');
       }
 
+      const pendingCookies = this.deps.profilesService.getPendingCookies(detail.userDataDir);
+      const shouldCapture = Boolean(opts.captureReadback);
+      const needsPostLaunchCdp = pendingCookies.length > 0 || shouldCapture;
+      const initialPages = needsPostLaunchCdp
+        ? ['about:blank']
+        : detail.startPages.length > 0
+          ? detail.startPages
+          : ['about:blank'];
+
       const { child, cdpPort, cdpWsPath } = await this.spawnEngineWithFallback(
         executablePath,
         resolvedFp,
         detail.userDataDir,
         bridgePort !== null ? `socks5://127.0.0.1:${bridgePort}` : undefined,
         extraFlags,
-        ['about:blank'],
+        initialPages,
       );
       spawnedChild = child;
 
-      const pendingCookies = this.deps.profilesService.getPendingCookies(detail.userDataDir);
-      const shouldCapture = opts.captureReadback || !detail.observedFingerprint;
-
-      if (pendingCookies.length > 0 || shouldCapture || detail.startPages.length > 0) {
+      if (needsPostLaunchCdp) {
         const cdp = new CdpClient();
         try {
           await cdp.connectToFirstPage(cdpPort, 10_000);
@@ -354,15 +360,17 @@ export class ProfileLauncher {
               const snapshot = await probeServer.waitForSnapshot(10_000);
               this.deps.profilesService.saveObservedFingerprint(profileId, snapshot);
             } catch {
-              // Non-fatal: do not block interactive browser launch if probe readback times out
+              // Non-fatal: do not block interactive browser launch if probe readback times out or crashes
             } finally {
               await probeServer.close();
             }
           }
           const targetStart = detail.startPages[0] ?? 'about:blank';
           if (targetStart !== 'about:blank' || navigatedToProbe) {
-            await cdp.navigateAndWait(targetStart, 15_000);
+            await cdp.navigateAndWait(targetStart, 10_000).catch(() => undefined);
           }
+        } catch {
+          // Non-fatal: keep the launched browser registered and usable even if post-launch CDP fails
         } finally {
           cdp.disconnect();
         }
@@ -480,7 +488,7 @@ export class ProfileLauncher {
 
     const cdp = new CdpClient();
     try {
-      await cdp.connectToFirstPage(handle.cdpPort, 3_000);
+      await cdp.connectToBrowser(handle.cdpPort, 3_000, { wsPath: handle.cdpWsPath });
       await cdp.closeBrowser();
     } catch {
       // Fallback to signal termination below

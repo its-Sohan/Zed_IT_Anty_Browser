@@ -122,6 +122,8 @@ export class CdpLinkTabDriver implements LinkTabDriver {
       if (targetId) {
         await this.safeCloseTarget(browserCdp, cdpPort, targetId, sessionId);
       }
+      // Drop the cached browser socket on setup failure so the next link reconnects cleanly
+      this.releaseBrowser(cdpPort);
       throw err;
     }
 

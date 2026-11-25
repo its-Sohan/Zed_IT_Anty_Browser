@@ -205,7 +205,7 @@ export class CdpClient {
     while (Date.now() < deadline) {
       if (options.wsPath) {
         try {
-          await this.connect(`ws://127.0.0.1:${port}${options.wsPath}`, timeoutMs);
+          await this.connect(`ws://127.0.0.1:${port}${options.wsPath}`, Math.min(timeoutMs, 5_000));
           return;
         } catch (err) {
           lastError = err;

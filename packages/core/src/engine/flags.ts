@@ -102,6 +102,7 @@ export function composeEngineFlags(rawOptions: EngineLaunchOptions): string[] {
   flags.push(
     '--no-first-run',
     '--no-default-browser-check',
+    '--hide-crash-restore-bubble',
     '--disable-features=Translate,MediaRouter',
   );
 
